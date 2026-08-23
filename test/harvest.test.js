@@ -81,3 +81,38 @@ test('harvest marks a comments-disabled video with a visible row instead of thro
   const video = db.prepare(`SELECT comments_enabled FROM videos WHERE id = 'v1' AND namespace = 'own'`).get();
   assert.equal(video.comments_enabled, 0);
 });
+
+test('a channel with zero uploads (playlistItems.list 404 playlistNotFound) is treated as 0 videos, not an error (M0 platform finding)', async () => {
+  // Confirmed live during M0 against the real persona test channel: channels.list
+  // reports videoCount 0 and still names an uploads playlist id, but that
+  // playlist has never actually been created, so playlistItems.list 404s.
+  const db = openDb(':memory:');
+  ensureNamespace(db, { name: 'own', kind: 'own', channelId: 'UCowner' });
+  const yt = fakeReadClient();
+  yt.playlistItems.list = async () => {
+    const err = new Error('The playlist identified with the request\'s playlistId parameter cannot be found.');
+    err.code = 404;
+    err.errors = [{ reason: 'playlistNotFound' }];
+    throw err;
+  };
+
+  const result = await harvest(db, yt, { namespace: 'own', channelId: 'UCowner', ownerChannelId: 'UCowner' });
+  assert.deepEqual(result, { videosSeen: 0, commentsOffVideos: [], newComments: 0 });
+});
+
+test('a genuine 404 with a different reason still propagates (playlistNotFound handling must not swallow unrelated errors)', async () => {
+  const db = openDb(':memory:');
+  ensureNamespace(db, { name: 'own', kind: 'own', channelId: 'UCowner' });
+  const yt = fakeReadClient();
+  yt.playlistItems.list = async () => {
+    const err = new Error('quotaExceeded');
+    err.code = 403;
+    err.errors = [{ reason: 'quotaExceeded' }];
+    throw err;
+  };
+
+  await assert.rejects(
+    () => harvest(db, yt, { namespace: 'own', channelId: 'UCowner', ownerChannelId: 'UCowner' }),
+    /quotaExceeded/
+  );
+});

@@ -1,5 +1,6 @@
 import { createMindsClient } from '@animocabrands/minds-client-lib';
 import { config, requireEnv } from '../config.js';
+import { stripHtml, isInterimAck } from './parse.js';
 
 /**
  * Thin wrapper around @animocabrands/minds-client-lib scoped to the one
@@ -23,21 +24,43 @@ export class MindClient {
   }
 
   /**
-   * Sends a prompt and waits for the Mind's reply on callback-main.
+   * Sends a prompt and waits for the Mind's reply on callback-main. The Mind
+   * sometimes sends an interim acknowledgment ("I'll notify you here when
+   * I've finished.") before the real answer, up to a couple of minutes
+   * later (confirmed live during M0) -- this keeps waiting past any such
+   * ack, within the same overall timeout, rather than returning it as the
+   * final reply. Reply text is always HTML-stripped first (the Builder API
+   * wraps messageText in simple HTML, e.g. "<p>ok</p>", confirmed live).
    * @param {string} messageText
    * @param {{timeoutMs?: number}} [opts]
    * @returns {Promise<{timedOut: true} | {timedOut: false, text: string, raw: import('@animocabrands/minds-client-lib').MessageRecord}>}
    */
   async ask(messageText, opts = {}) {
     requireEnv('minds');
-    const sent = await this.raw.sendMessage({ alias: this.alias, messageText });
-    const outcome = await this.raw.waitForReply({
-      alias: this.alias,
-      timeoutMs: opts.timeoutMs ?? 180_000,
-      sentMessageText: messageText,
-    });
-    if (outcome.timedOut) return { timedOut: true };
-    return { timedOut: false, text: outcome.reply.messageText ?? '', raw: outcome.reply };
+    await this.raw.sendMessage({ alias: this.alias, messageText });
+
+    const deadline = Date.now() + (opts.timeoutMs ?? 180_000);
+    let afterFingerprint;
+
+    for (;;) {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) return { timedOut: true };
+
+      const outcome = await this.raw.waitForReply({
+        alias: this.alias,
+        timeoutMs: remaining,
+        sentMessageText: messageText,
+        afterFingerprint,
+      });
+      if (outcome.timedOut) return { timedOut: true };
+
+      const text = stripHtml(outcome.reply.messageText ?? '');
+      if (isInterimAck(text)) {
+        afterFingerprint = outcome.reply.fingerprint;
+        continue;
+      }
+      return { timedOut: false, text, raw: outcome.reply };
+    }
   }
 
   /**

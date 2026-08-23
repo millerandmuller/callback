@@ -1,4 +1,48 @@
 /**
+ * Strips HTML tags and decodes common entities from Builder API messageText,
+ * which wraps replies in simple HTML (confirmed live during M0: a plain "ok"
+ * reply came back as messageText "<p>ok</p>"). <p>/<div> become paragraph
+ * breaks, <br> becomes a newline, everything else is just removed -- this is
+ * a targeted cleanup for locating a fenced JSON block and for human-readable
+ * text, not a general HTML-to-text converter.
+ * @param {string} html
+ * @returns {string}
+ */
+export function stripHtml(html) {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div)>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0*39;|&apos;/gi, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+const INTERIM_ACK_PATTERN =
+  /\bI(?:'|’)?ll\s+(?:notify|let you know|get back to you|update you|message you|reach out to you|ping you)\b|\b(?:still\s+)?(?:thinking|working on it|processing)\.{0,3}\s*$|\bgive me (?:a\s+)?(?:moment|minute|second)\b/i;
+
+/**
+ * True when a Mind reply looks like an interim acknowledgment ("I'll notify
+ * you here when I've finished.") rather than the real answer, which
+ * sometimes arrives as a separate, later message a minute or two afterward
+ * (confirmed live during M0). Deliberately narrow (pattern plus a length
+ * cap) so a genuine short final answer is never mistaken for one.
+ * @param {string} text plain text, already HTML-stripped
+ * @returns {boolean}
+ */
+export function isInterimAck(text) {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length > 200) return false;
+  return INTERIM_ACK_PATTERN.test(trimmed);
+}
+
+/**
  * Extracts the first fenced code block from a Mind reply and parses it as JSON.
  * Accepts ```json ... ``` or plain ``` ... ``` fences (the Mind does not always
  * label the fence). Returns null on no fence or invalid JSON — callers decide

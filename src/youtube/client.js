@@ -70,11 +70,25 @@ async function getUploadsPlaylistId(yt, channelId) {
  */
 export async function listRecentVideos(yt, channelId, n = 10) {
   const uploadsPlaylistId = await getUploadsPlaylistId(yt, channelId);
-  const res = await yt.playlistItems.list({
-    part: ['snippet', 'contentDetails'],
-    playlistId: uploadsPlaylistId,
-    maxResults: Math.min(n, 50),
-  });
+  let res;
+  try {
+    res = await yt.playlistItems.list({
+      part: ['snippet', 'contentDetails'],
+      playlistId: uploadsPlaylistId,
+      maxResults: Math.min(n, 50),
+    });
+  } catch (err) {
+    // A channel that has never uploaded has no uploads playlist yet, even
+    // though channels.list still names one in relatedPlaylists.uploads --
+    // playlistItems.list 404s with reason playlistNotFound. Confirmed live
+    // against the persona test channel (videoCount 0) during M0. This is
+    // "0 videos", not a failure: harvest and the upload poll must continue.
+    const reasons = err?.errors?.map((e) => e.reason) ?? [];
+    if (err?.code === 404 && reasons.includes('playlistNotFound')) {
+      return [];
+    }
+    throw err;
+  }
   return (res.data.items ?? []).map((item) => ({
     videoId: item.contentDetails?.videoId ?? '',
     title: item.snippet?.title ?? '',
