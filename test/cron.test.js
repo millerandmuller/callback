@@ -76,6 +76,45 @@ test('F4: an unlisted upload in the fake uploads list is detected as new and mat
   assert.match(reply.reply_text, /2:14/);
 });
 
+test('F4: a video detected while still processing (captionsAvailable=false) still drafts, with no timestamp pointer (E7 fallback)', async () => {
+  // Empirically confirmed live (deployments.md, 2026-08-23): F4's poll can
+  // see an unlisted upload ~15s after it's created, while the video's own
+  // processingStatus is still 'processing' -- captions never exist that
+  // early. getVideoMeta safely reports captionsAvailable: false in that
+  // case; the caller (runUploadPollCycle) always passes captionsText: null
+  // to match-and-draft regardless of this flag, so E7's "no captions -> no
+  // pointer" fallback must hold for a processing video exactly as it does
+  // for a fully-processed one with no captions at all.
+  const db = openDb(':memory:');
+  const [ask] = seedOpenAsk(db);
+  const oauthClient = { label: 'OAuth write client' };
+
+  const listRecentVideos = async () => [{ videoId: 'v2', title: 'How I light the desk', publishedAt: '2026-08-24T10:00:00Z' }];
+  const getVideoMeta = async (yt, videoId) => ({
+    videoId,
+    title: 'How I light the desk',
+    description: 'A follow-up video about desk lighting',
+    publishedAt: '2026-08-24T10:00:00Z',
+    captionsAvailable: false, // still processing
+    privacyStatus: 'unlisted',
+  });
+  const mind = {
+    async ask(prompt) {
+      assert.match(prompt, /No captions are available for this video\. Do not name a timestamp/, 'the prompt must tell the Mind captions are not available for a still-processing video');
+      return { timedOut: false, text: `\`\`\`json\n[{"askId":${ask.askId},"askerChannelId":"UCkai","replyText":"Kai, here it is.","timestamp":null}]\n\`\`\`` };
+    },
+  };
+
+  const result = await runUploadPollCycle(db, oauthClient, mind, { listRecentVideos, getVideoMeta });
+
+  assert.equal(result.matched, true);
+  const batch = db.prepare(`SELECT * FROM batches WHERE video_id = 'v2'`).get();
+  assert.ok(batch, 'a batch was still created even though the video was still processing at detection time');
+  const reply = db.prepare(`SELECT * FROM batch_replies WHERE batch_id = ?`).get(batch.id);
+  assert.equal(reply.status, 'drafted');
+  assert.equal(reply.timestamp_pointer, null, 'no pointer while the video is still processing (E7 fallback)');
+});
+
 test('F4: an already-known video (already harvested this cycle) is not re-matched', async () => {
   const db = openDb(':memory:');
   seedOpenAsk(db);

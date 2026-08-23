@@ -108,6 +108,18 @@ export async function listRecentVideos(yt, channelId, n = 10) {
  * src/posting/posting.js). Call this fresh at posting time rather than
  * reusing an F4-time value: privacyStatus changes between drafting (while
  * still unlisted) and posting (once the creator flips it public).
+ *
+ * F4's upload poll can see a video within ~15s of upload (confirmed live,
+ * `deployments.md` 2026-08-23), while its `processingStatus` is still
+ * `processing` — captions never exist that early. `contentDetails.caption`
+ * safely resolves to `captionsAvailable: false` in that case (no crash, no
+ * special-casing needed): the caller (`runUploadPollCycle`) always passes
+ * `captionsText: null` to match-and-draft regardless, so E7's "no captions
+ * → no pointer" fallback (`src/prompts/matchAndDraft.js`) already applies
+ * correctly whether the video is mid-processing or fully processed with no
+ * captions at all. `harvest()`'s independent 30-minute cycle re-fetches and
+ * updates the stored `captions_available` flag on every run, so it isn't
+ * stuck stale from a processing-time read either.
  * @param {import('googleapis').youtube_v3.Youtube} yt
  * @param {string} videoId
  */
