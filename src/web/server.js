@@ -61,8 +61,19 @@ export function createApp({ db, namespace, ytRead, mind }) {
         })
       );
     }
-    const result = await runDryRun(db, ytRead, mind, { handleOrChannelId: handle });
-    return c.html(renderDryRunPage({ handle, result }));
+    // E5 runs live, on stage, against an audience-suggested public channel --
+    // its comments are real and un-rehearsed, so this route must never take
+    // down the whole request on one unexpected error (adversarial find:
+    // reachable via a single odd Mind classification before the ledger-level
+    // fix above; this stays as defense in depth for anything else that could
+    // throw here, e.g. a transient YouTube/Minds API error).
+    try {
+      const result = await runDryRun(db, ytRead, mind, { handleOrChannelId: handle });
+      return c.html(renderDryRunPage({ handle, result }));
+    } catch (err) {
+      console.error('[dryrun]', err);
+      return c.html(renderDryRunPage({ handle, result: { ok: false, reason: `Dry run failed: ${err.message}` } }));
+    }
   });
 
   return app;

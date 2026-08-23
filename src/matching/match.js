@@ -65,7 +65,14 @@ export async function matchAndDraft(db, mind, args) {
 
   const drafts = Array.isArray(result.data) ? result.data : [];
   const openAskIds = new Set(openAsks.map((a) => a.askId));
-  const validDrafts = drafts.filter((d) => openAskIds.has(d.askId) && d.replyText?.trim());
+  // The Mind's JSON reply is untrusted: askId can come back as a numeric
+  // string (e.g. "1") even though openAsks' ids are SQLite integers. Without
+  // normalizing, Set.has() does a strict-type comparison and silently drops
+  // an otherwise-correct draft with no error anywhere (adversarial find) --
+  // normalize once here so every downstream consumer sees a real number.
+  const validDrafts = drafts
+    .map((d) => ({ ...d, askId: Number(d.askId) }))
+    .filter((d) => Number.isInteger(d.askId) && openAskIds.has(d.askId) && d.replyText?.trim());
   if (validDrafts.length === 0) return { ok: false, reason: 'no open asks answered by this video' };
 
   const batchId = newBatchId();

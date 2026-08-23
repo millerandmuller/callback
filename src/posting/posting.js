@@ -39,21 +39,37 @@ export async function postApprovedBatch(db, ytWrite, batchId, opts = {}) {
     );
   }
 
-  const replies = db
-    .prepare(`SELECT * FROM batch_replies WHERE batch_id = ? AND status = 'approved'`)
-    .all(batchId);
+  const candidateIds = db
+    .prepare(`SELECT id FROM batch_replies WHERE batch_id = ? AND status = 'approved'`)
+    .all(batchId)
+    .map((r) => r.id);
+
+  // Claim statement: atomically flips 'approved' -> 'posting' and reports how
+  // many rows it actually changed. better-sqlite3 statements run
+  // synchronously, so between this call and the next one nothing else on
+  // this connection can interleave -- two concurrent postApprovedBatch calls
+  // (a double-tap, a retry, a duplicate cron tick) can therefore never both
+  // win the claim for the same reply, which is what let Beat 3 double-post
+  // live to YouTube before this fix (adversarial find).
+  const claimStmt = db.prepare(`UPDATE batch_replies SET status = 'posting' WHERE id = ? AND status = 'approved'`);
+  const revertToApprovedStmt = db.prepare(`UPDATE batch_replies SET status = 'approved' WHERE id = ?`);
 
   let posted = 0;
   let failed = 0;
   let queued = 0;
 
-  for (let i = 0; i < replies.length; i += 1) {
-    const reply = replies[i];
+  for (let i = 0; i < candidateIds.length; i += 1) {
+    const replyId = candidateIds[i];
+    const claim = claimStmt.run(replyId);
+    if (claim.changes === 0) continue; // lost the race to a concurrent call; nothing to do
+
+    const reply = db.prepare(`SELECT * FROM batch_replies WHERE id = ?`).get(replyId);
 
     if (!canAfford(db, QUOTA_COST.INSERT)) {
+      revertToApprovedStmt.run(replyId);
       db.prepare(
         `INSERT INTO post_queue (batch_reply_id, reason) VALUES (?, 'YouTube quota exhausted; queued past the Pacific-midnight reset')`
-      ).run(reply.id);
+      ).run(replyId);
       queued += 1;
       continue;
     }
@@ -65,31 +81,31 @@ export async function postApprovedBatch(db, ytWrite, batchId, opts = {}) {
       .get(reply.ask_id);
 
     try {
-      const { replyId, publishedAt } = await insertReply(ytWrite, originalEvent.commentId, reply.reply_text);
+      const { replyId: postedCommentId, publishedAt } = await insertReply(ytWrite, originalEvent.commentId, reply.reply_text);
       recordUsage(db, QUOTA_COST.INSERT);
       db.prepare(
         `UPDATE batch_replies SET status = 'posted', reply_comment_id = ?, reply_published_at = ? WHERE id = ?`
-      ).run(replyId, publishedAt, reply.id);
+      ).run(postedCommentId, publishedAt, replyId);
       markAskAnswered(db, {
         askId: reply.ask_id,
-        replyId,
-        replyUrl: commentUrl(batch.video_id, replyId),
+        replyId: postedCommentId,
+        replyUrl: commentUrl(batch.video_id, postedCommentId),
         repliedAt: publishedAt,
       });
       posted += 1;
     } catch (err) {
       db.prepare(`UPDATE batch_replies SET status = 'failed', error = ? WHERE id = ?`).run(
         err?.message ?? String(err),
-        reply.id
+        replyId
       );
       failed += 1;
     }
 
-    if (i < replies.length - 1) await sleep(throttleMs);
+    if (i < candidateIds.length - 1) await sleep(throttleMs);
   }
 
   const stillPending = db
-    .prepare(`SELECT COUNT(*) as n FROM batch_replies WHERE batch_id = ? AND status IN ('approved', 'drafted')`)
+    .prepare(`SELECT COUNT(*) as n FROM batch_replies WHERE batch_id = ? AND status IN ('approved', 'drafted', 'posting')`)
     .get(batchId).n;
   const anyFailedOrQueued = failed > 0 || queued > 0;
   const status = stillPending > 0 || anyFailedOrQueued ? 'partial' : 'posted';

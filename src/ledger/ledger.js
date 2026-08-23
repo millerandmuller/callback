@@ -44,10 +44,13 @@ const insertAskEventStmt = (db) =>
  * the same comments updates classifications but only ever adds one ask_event
  * per (commentId), because harvest() already guarantees each commentId is
  * processed once (T-01's idempotency carries through here by construction —
- * callers should only pass newly-harvested comments).
+ * callers should only pass newly-harvested comments). An item marked
+ * isAsk=true with no usable askerChannelId/topic is counted as `malformed`
+ * and skipped, never thrown -- one bad item from the Mind must not roll back
+ * every other, correctly-classified item in the same batch.
  * @param {import('better-sqlite3').Database} db
  * @param {{namespace: string, videoId: string, items: Array<{commentId: string, askerChannelId: string, askerName: string, isAsk: boolean, isAbusive: boolean, topic?: string, quote?: string, publishedAt: string}>}} args
- * @returns {{asksCreated: number, asksBumped: number, filtered: number}}
+ * @returns {{asksCreated: number, asksBumped: number, filtered: number, malformed: number}}
  */
 export function mergeExtractionResults(db, { namespace, videoId, items }) {
   const classifyComment = classifyCommentStmt(db);
@@ -61,6 +64,7 @@ export function mergeExtractionResults(db, { namespace, videoId, items }) {
   let asksCreated = 0;
   let asksBumped = 0;
   let filtered = 0;
+  let malformed = 0;
 
   const run = db.transaction((rows) => {
     for (const item of rows) {
@@ -73,6 +77,17 @@ export function mergeExtractionResults(db, { namespace, videoId, items }) {
 
       if (!item.isAsk || item.isAbusive) {
         filtered += 1;
+        continue;
+      }
+
+      // The Mind's extraction reply is untrusted input: a comment marked
+      // isAsk=true with no usable topic/askerChannelId can't become a valid
+      // ask row (topic is NOT NULL on `asks`). Skip it rather than let the
+      // whole batch's transaction throw and roll back every other,
+      // correctly-classified comment in the same batch (this was reachable
+      // live via POST /dryrun on one malformed comment -- adversarial find).
+      if (!item.askerChannelId || !item.topic?.trim()) {
+        malformed += 1;
         continue;
       }
 
@@ -117,7 +132,7 @@ export function mergeExtractionResults(db, { namespace, videoId, items }) {
   });
   run(items);
 
-  return { asksCreated, asksBumped, filtered };
+  return { asksCreated, asksBumped, filtered, malformed };
 }
 
 /**

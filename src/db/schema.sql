@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS batch_replies (
   ask_id INTEGER NOT NULL REFERENCES asks(id),
   reply_text TEXT NOT NULL,
   timestamp_pointer TEXT,                        -- m:ss, only ever set when captions existed (E7)
-  status TEXT NOT NULL DEFAULT 'drafted' CHECK (status IN ('drafted', 'struck', 'approved', 'posted', 'failed')),
+  status TEXT NOT NULL DEFAULT 'drafted' CHECK (status IN ('drafted', 'struck', 'approved', 'posting', 'posted', 'failed')),
   reply_comment_id TEXT,
   reply_published_at TEXT,
   error TEXT

@@ -9,6 +9,21 @@ import { startSchedulers } from './scheduler/cron.js';
 
 const NAMESPACE = 'own';
 
+// Hono's own error boundary only covers request handlers; a rejection from
+// the cron jobs (which run outside any request) or any other stray async
+// error would otherwise crash the process with no trace of why -- exactly
+// the kind of silent, undiagnosable death the demo examiner flagged during
+// this round's review. Log loudly and exit non-zero so a crash during
+// rehearsal or recording leaves a reason behind instead of just vanishing.
+process.on('uncaughtException', (err) => {
+  console.error('[fatal] uncaughtException', err);
+  process.exitCode = 1;
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[fatal] unhandledRejection', reason);
+  process.exitCode = 1;
+});
+
 function tryCreate(label, factory) {
   try {
     return factory();

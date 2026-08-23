@@ -30,16 +30,24 @@ async function runHarvestCycle(db, ytRead, mind) {
 
   const byVideo = Object.groupBy(unclassified, (c) => c.videoId);
   for (const [videoId, comments] of Object.entries(byVideo)) {
-    const video = db.prepare(`SELECT title FROM videos WHERE id = ? AND namespace = 'own'`).get(videoId);
-    const prompt = buildExtractionPrompt({
-      creatorName: config.creator.displayName,
-      videoTitle: video?.title ?? videoId,
-      videoId,
-      comments,
-    });
-    const extraction = await askMindForJson(mind, prompt);
-    if (extraction.ok && Array.isArray(extraction.data)) {
-      mergeExtractionResults(db, { namespace: 'own', videoId, items: extraction.data });
+    // One video's extraction failing (a Mind error, a malformed reply that
+    // still slips past mergeExtractionResults' own validation, a transient
+    // DB error) must not stop the rest of this harvest cycle's videos from
+    // being classified -- each video is independent.
+    try {
+      const video = db.prepare(`SELECT title FROM videos WHERE id = ? AND namespace = 'own'`).get(videoId);
+      const prompt = buildExtractionPrompt({
+        creatorName: config.creator.displayName,
+        videoTitle: video?.title ?? videoId,
+        videoId,
+        comments,
+      });
+      const extraction = await askMindForJson(mind, prompt);
+      if (extraction.ok && Array.isArray(extraction.data)) {
+        mergeExtractionResults(db, { namespace: 'own', videoId, items: extraction.data });
+      }
+    } catch (err) {
+      console.error(`[harvest] extraction failed for video ${videoId}:`, err);
     }
   }
 
