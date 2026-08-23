@@ -86,6 +86,30 @@ FIXED (build terminal): `MindClient.ask()` in `src/mind/client.js` now loops pas
   round. See `revision_log.md` (Round 3) for the full commit-by-commit
   breakdown.
 
+### Round 3 — `/academy-round` Examine + Revise (build terminal, 2026-08-23)
+
+- Four fresh Examiner subagents reviewed the above. Baseline and features PASS
+  (55/55 tests after this sub-phase's fixes; live-verified `privacyStatus`
+  against the real YouTube API with both credentials, including the exact
+  OAuth client F6 uses). Demo: `NOT STAGE-READY` (same M1 blocker as Round 2,
+  unchanged) plus one new unresolved risk (below). Adversarial found and this
+  session fixed: overlapping posting-poll cron ticks were breaking F6's 20s
+  reply throttle (P2, fixed — `batchesInFlight` guard in `cron.js`); the
+  approval page showed a misleading static "approved" state on a transient
+  privacy-check failure instead of "waiting" (P3, fixed). Documented, not
+  fixed: a deleted answering video causes an indefinite silent retry (P3, low
+  reachability — README "after the hackathon").
+- **Open risk, highest priority for M1:** whether the channel's uploads
+  playlist actually returns an unlisted video to the OAuth-authenticated
+  owner — F4's core detection mechanism assumes yes, never verified against
+  a real unlisted video. See `SETUP.md` section 7 for the exact 5-minute
+  check to run first, and `DECISION_LOG.md` (2026-08-23) for the full
+  reasoning on why this wasn't resolved by a speculative rewrite this
+  session.
+- `VERDICT: FAIL` (forced by `DEMO-VERDICT: NOT STAGE-READY`, same as every
+  round since M0 — not moveable by code alone). Per the Round 1→2 precedent,
+  the round stops here rather than looping further; only M1 can move it.
+
 ## Submission form fields (DoraHacks)
 
 - Mind ID: ee7b4f3e-f36b-1410-8466-00039ce7df11
