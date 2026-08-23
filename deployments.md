@@ -110,6 +110,17 @@ FIXED (build terminal): `MindClient.ask()` in `src/mind/client.js` now loops pas
   round since M0 — not moveable by code alone). Per the Round 1→2 precedent,
   the round stops here rather than looping further; only M1 can move it.
 
+### Unlisted-upload detection assumption (F4) — VERIFIED 2026-08-23 05:17 CDT
+```
+Method: two 3-second throwaway clips uploaded UNLISTED via videos.insert with the Mei makes things OAuth token, then polled, then deleted (HTTP 204 each; channel back to 0 uploads).
+t+8s   playlistItems.list(UUwgJK_Fm5G_xxf4P6WoOMKw, OAuth): 0 items (propagation lag)
+t+16s  playlistItems.list(UUwgJK_Fm5G_xxf4P6WoOMKw, OAuth): 1 item, status.privacyStatus=unlisted, video processingStatus=processing
+       search.list forMine=true: finds the same video (100 units; not needed)
+       playlistItems.list with API key: 404 playlistNotFound (API key sees public uploads only)
+Conclusion: the owner OAuth client sees unlisted uploads in the uploads playlist within ~15 s; the 10-minute F4 poll has margin. SETUP.md §7 5-minute check can be marked done.
+Quota note: ~3,400 units of the 2026-08-23 Pacific day consumed by the probe (2 inserts at 1,600, 1 search at 100, 2 deletes at 50); resets at midnight Pacific.
+```
+
 ## Submission form fields (DoraHacks)
 
 - Mind ID: ee7b4f3e-f36b-1410-8466-00039ce7df11
@@ -151,6 +162,16 @@ OPEN
 ### T-04 (quota queue)
 ```
 2026-08-22 21:55 CDT — `npm run verify:t04`: Pacific day 2026-08-22 · Quota used 0 / 10000 · Queued replies 0 (queue empty; unit-level proof in test/quota-queue.test.js)
+
+2026-08-23 — real Google Cloud project quota (not this app's own quota_ledger,
+which only counts usage made through the app's own code paths and doesn't see
+a standalone probe script): the unlisted-upload-detection probe (see "Unlisted-
+upload detection assumption" above) spent ~3,400 units of the 2026-08-23
+Pacific day (2 videos.insert at 1,600 each, 1 search.list at 100, 2
+comments/videos delete at 50 each). Roughly 6,600 units remain in today's
+10,000/day budget until the Pacific-midnight reset. `npm run verify:t04`
+against this app's own ledger will still read close to 0 until M1 harvest/
+posting activity actually runs through it.
 ```
 
 ### T-05 (match+draft QA grep)
