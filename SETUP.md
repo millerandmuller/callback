@@ -117,11 +117,40 @@ with no new remote activity in between is near-instant. Trigger it once
 during rehearsal, well ahead of the actual recording take, so the live-demo
 trigger only has to classify whatever's arrived since.
 
+### Own-channel rehearsal sequence (Beat 3, F4-F6, unlisted-first)
+
+This is the sequence to rehearse — and to run live during recording — for
+the callback itself (video 3 answering the open asks on the persona test
+channel), separate from the E5 dry run above:
+
+1. **Upload video 3 as unlisted** (not public, not private) on the persona
+   test channel. The upload poll (every `UPLOAD_POLL_INTERVAL_MIN` minutes,
+   OAuth-authenticated so it sees the video while still unlisted) detects
+   it, sends its title/description/captions to the Mind, and the Mind
+   drafts one reply per matched open ask — this is where the 4-5 minute
+   Mind latency happens, entirely before the video is public.
+2. **Wait for the approval notice.** The Mind messages the creator
+   (Telegram, or email per S6's fallback) once the batch is drafted, with
+   the `/approve/:batchId` link.
+3. **Approve.** Open the link, review each reply beside its original
+   comment, tap "Call back N people." Nothing has posted yet — the batch is
+   now `approved` but still waiting, because the video is still unlisted.
+4. **Set the video public in YouTube Studio.** This is a manual step done
+   outside the app, on camera for the recording.
+5. **Watch the first reply land within 20 seconds.** The posting-poll cron
+   re-checks the video's `privacyStatus` every `POSTING_POLL_INTERVAL_SEC`
+   seconds (default 30s); once it sees `public`, it posts the approved
+   replies one per 20s throttle (Section 6), so the first reply appears
+   under the asker's original comment shortly after the video goes public.
+   The approval page (if left open) shows "Waiting for the video to go
+   public" until then and refreshes itself every 30s.
+
 ## After this file
 
 Run `npm run check-env`. Once every line is checked, `npm start` will start
-the harvest (30 min) and upload-poll (10 min) cron jobs automatically, and
-`npm run verify:t01` through `verify:t06` become runnable — see README.md's
+the harvest (30 min), upload-poll (10 min), and posting-poll (30 sec) cron
+jobs automatically, and `npm run verify:t01` through `verify:t06` become
+runnable — see README.md's
 "Verify walkthrough". Note: `verify:t01` (and the harvest/upload-poll cron
 jobs) correctly treat a channel with zero uploads as "0 videos" rather than
 erroring — YouTube 404s `playlistNotFound` for a channel's uploads playlist

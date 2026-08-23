@@ -109,6 +109,25 @@ source for the DoraHacks submission form and the S4 writeup.
   namespace has a `kind` ('own' | 'dryrun'), and `postApprovedBatch()`
   refuses to run against anything but 'own' — see
   `src/posting/posting.js` and `test/dryrun.test.js`.
+- **One shared Mind conversation, serialized.** Every call to the Mind —
+  harvest extraction (F1/F2), the Sunday brief (F3), match-and-draft (F4),
+  a `/dryrun` classification, `doctor()` — runs on the same conversation
+  alias, `callback-main`. `MindClient` serializes every call against a
+  per-instance lock (`src/mind/client.js`) so no two `sendMessage`/
+  `waitForReply` cycles are ever in flight at once; a live cross-talk bug
+  found during the build (two concurrent calls on `callback-main`
+  legitimately receiving each other's replies) is why this exists — see
+  `DECISION_LOG.md`, 2026-08-22.
+- **Measured Mind latency: 4-5 minutes per video of comments**, not
+  seconds. A live extraction/classification pass against a real channel's
+  comment volume took roughly that long end to end. This is why the
+  unlisted-first flow exists (upload unlisted → draft while unlisted →
+  post once public) and why `/dryrun` is **pre-warmed before recording**:
+  `harvest()` is idempotent and only ever sends unclassified comments to
+  the Mind, so a second dry run against an already-seen channel with
+  nothing new is near-instant — the first, cold run is not. Pre-warm the
+  chosen channel during rehearsal (`SETUP.md` section 7) before the live
+  demo trigger.
 
 ## What's real vs. curated
 
