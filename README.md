@@ -146,6 +146,12 @@ source for the DoraHacks submission form and the S4 writeup.
 - Telegram "approve" by message as the *only* approval path (a Skill
   wrapping the approve endpoint is a stretch goal inside F5's hours, gated
   at day 3 — see `project_brief.md` F5).
+- Surfacing a deleted or otherwise inaccessible answering video: right now,
+  a batch waiting on such a video looks identical to one waiting on a
+  genuinely unlisted/private video ("Waiting for the video to go public")
+  and the posting-poll cron retries it indefinitely with no cap or visible
+  error. Not reachable on the demo path (the answering video is the team's
+  own scripted upload on a channel they control) — adversarial find, Round 3.
 
 ## License
 
