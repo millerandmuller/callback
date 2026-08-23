@@ -57,8 +57,8 @@ FIXED (build terminal): `MindClient.ask()` in `src/mind/client.js` now loops pas
 - OAuth client (Testing mode) created, test channel added as test user: DONE 2026-08-22 21:28 CDT — Google Auth Platform configured (app "Callback", External, Testing, user cap 2/100); test users: lmiller.phd.dabt@gmail.com (project owner) and solutions@3rdaillc.com (channel owner); OAuth client `callback-desktop` (Desktop app)
 - `YOUTUBE_OAUTH_CLIENT_ID` / `_SECRET` / `_REFRESH_TOKEN` set: DONE 2026-08-22 21:50 CDT via `npm run setup:oauth` (scripts/setup/oauth-token.js; scope youtube.force-ssl, access_type=offline, prompt=consent). First grant landed on Science Experts AI by default; re-run choosing the brand account on Google's "Choose your account or a brand account" screen. Verified: channels.list mine=true → Mei makes things. Leftover grant on the main account: revoke "Callback" at https://myaccount.google.com/permissions?authuser=2 (manual, low priority)
 - Persona test channel name: Mei makes things (@meimakesthings_callback), brand account under solutions@3rdaillc.com (Workspace-managed), created 2026-08-22 21:38 CDT; YouTube showed an "Oops, sign out and sign in again" page right after creation — the channel existed anyway
-- Persona test channel id (`YOUTUBE_TEST_CHANNEL_ID`): UCwgJK_Fm5G_xxf4P6WoOMKw (uploads playlist UUwgJK_Fm5G_xxf4P6WoOMKw); 0 videos as of 21:55 CDT
-- Dry-run channel (see `seed/dryrun-channel.md`): OPEN
+- Persona test channel id (`YOUTUBE_TEST_CHANNEL_ID`): UCwgJK_Fm5G_xxf4P6WoOMKw (uploads playlist UUwgJK_Fm5G_xxf4P6WoOMKw); video 1 = 0IF_iEFkRE8 published 2026-08-23 07:03 CDT; video 2 = D8ZAgrpYRcM "Darn a hole in a jumper without it puckering" (4:38) published public 2026-08-23 07:06 CDT (12:06:40Z) with the same settings as video 1 (not made for kids, AI-use disclosure No, language English, comments On, moderation None, anyone; NotebookLM disclosed in the description); verified via videos.list privacyStatus=public and the API-key uploads playlist (2 items)
+- Dry-run channel (see `seed/dryrun-channel.md`): CHOSEN 2026-08-23 07:40 CDT — @roxannerichardson (UCSPrWB2SZXVCj2-PH-36xBA, 166k subs, knitting/re-knitting, uploads every 2 weeks, 242 comments on the last 5 uploads, 18 unanswered questions older than 14 days); runner-up @xiaoxiaoyarn. Shortlist method: 3 `search.list` queries (300 units) + 1-unit reads over 16 band channels; `resolveChannel('@roxannerichardson')` verified. Pre-warm (~25 min of Mind time) still OPEN: first run during rehearsal 1 on Wed, never first on camera.
 
 ### Round 3 — unlisted-first flow implemented (build terminal, 2026-08-23)
 
@@ -138,15 +138,10 @@ walkthrough" for how to run each one.
 
 ### T-01 (F1 harvest idempotent)
 ```
-2026-08-22 21:55 CDT — NOT YET PASSABLE: `npm run verify:t01` → "The playlist identified with the request's playlistId parameter cannot be found."
-Root cause confirmed with the raw API: channels.list → videoCount 0; playlistItems.list(UUwgJK_Fm5G_xxf4P6WoOMKw) → 404 playlistNotFound.
-YouTube returns 404 for the uploads playlist of a channel that has never uploaded. Harvest (F1) and upload polling (F4) must treat playlistNotFound as "0 videos", not as an error. Re-run after video 1 is uploaded (M1).
-
-2026-08-22 (build terminal) — FIXED: src/youtube/client.js's listRecentVideos now catches 404 playlistNotFound from playlistItems.list and returns []. Re-run against the live channel:
-First run:  0 videos, 0 new comments, comments-off: []
-Second run: 0 videos, 0 new comments
-T-01 PASS: re-run added zero duplicates.
-(0 videos is correct and expected until M1's video 1 is uploaded; the fix is that this no longer throws.)
+2026-08-23 07:05 CDT — PASS. Video 1 published public (0IF_iEFkRE8, "The button that never falls off again", 7:43; not made for kids; comments on, moderation None, anyone; language English; AI-use disclosure: No (illustrated explainer, generic synthetic narrator; NotebookLM disclosed in the description)).
+API-key uploads playlist now returns the video (the earlier 404 playlistNotFound was the zero-uploads case, as recorded).
+`npm run verify:t01`: First run 1 videos, 0 new comments, comments-off []; Second run 1 videos, 0 new comments → T-01 PASS (re-run added zero duplicates). Re-run after tester comments land to confirm idempotency with real rows.
+2026-08-23 07:08 CDT — after video 2 (D8ZAgrpYRcM) published: First run 2 videos, 0 new comments, comments-off []; Second run 2 videos, 0 new comments → T-01 PASS. Still 0 comments: the Sunday tester comments have not landed yet.
 ```
 
 ### T-02 (F6 reply.parentId)
