@@ -1,7 +1,7 @@
 /**
- * @param {{title: string, body: string}} args
+ * @param {{title: string, body: string, head?: string}} args
  */
-export function layout({ title, body }) {
+export function layout({ title, body, head = '' }) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -9,6 +9,7 @@ export function layout({ title, body }) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${esc(title)} · Callback</title>
   <link rel="stylesheet" href="/style.css">
+  ${head}
 </head>
 <body>
   <main>

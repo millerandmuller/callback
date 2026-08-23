@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { getOpenAsks, getAnsweredAsks } from '../ledger/ledger.js';
 import { getBatchView, approveBatch, strikeReply } from '../approval/approval.js';
 import { runDryRun } from '../dryrun/dryrun.js';
+import { getVideoMeta } from '../youtube/client.js';
 import { renderLedgerPage } from './templates/ledger.js';
 import { renderApprovePage } from './templates/approve.js';
 import { renderDryRunPage } from './templates/dryrun.js';
@@ -14,13 +15,13 @@ const STYLE_CSS = readFileSync(join(__dirname, 'static/style.css'), 'utf8');
 
 /**
  * Builds the Hono app. Every dependency is passed in (db, plus optional
- * ytRead/mind for the one route that needs live calls) so the ledger and
+ * ytRead/ytWrite/mind for the routes that need live calls) so the ledger and
  * approval pages never touch the network — F7's "renders from the committed
  * snapshot with network disabled" acceptance check is just: don't start
- * ytRead/mind, still be able to GET /ledger.
- * @param {{db: import('better-sqlite3').Database, namespace: string, ytRead?: object, mind?: object}} deps
+ * ytRead/ytWrite/mind, still be able to GET /ledger.
+ * @param {{db: import('better-sqlite3').Database, namespace: string, ytRead?: object, ytWrite?: object, mind?: object}} deps
  */
-export function createApp({ db, namespace, ytRead, mind }) {
+export function createApp({ db, namespace, ytRead, ytWrite, mind }) {
   const app = new Hono();
 
   app.get('/style.css', (c) => c.body(STYLE_CSS, 200, { 'Content-Type': 'text/css' }));
@@ -31,10 +32,26 @@ export function createApp({ db, namespace, ytRead, mind }) {
     return c.html(renderLedgerPage({ openAsks, answeredAsks, namespace }));
   });
 
-  app.get('/approve/:batchId', (c) => {
+  app.get('/approve/:batchId', async (c) => {
     const view = getBatchView(db, c.req.param('batchId'));
     if (!view) return c.text('Batch not found', 404);
-    return c.html(renderApprovePage(view));
+
+    // F6: once approved but not yet fully posted, this is a read-only check
+    // (never posts — the posting-poll cron does that) so the page can tell
+    // the creator honestly whether the video needs to go public first. The
+    // actual re-check-and-post cadence is the cron's 30s interval; this page
+    // shows the same 30s cadence via a meta-refresh so it stays in sync.
+    let waitingForPublic = false;
+    if (view.batch.status === 'approved' && ytWrite) {
+      try {
+        const meta = await getVideoMeta(ytWrite, view.batch.video_id);
+        waitingForPublic = meta?.privacyStatus !== 'public';
+      } catch (err) {
+        console.error('[approve] privacy check failed', err);
+      }
+    }
+
+    return c.html(renderApprovePage({ ...view, waitingForPublic }));
   });
 
   app.post('/approve/:batchId/approve', (c) => {
