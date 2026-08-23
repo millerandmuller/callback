@@ -95,9 +95,25 @@ OPEN
 
 ### T-06 (Mind memory query, three consecutive runs)
 ```
-Run 1: OPEN
-Run 2: OPEN
-Run 3: OPEN
+Run 1 (build terminal, 2026-08-22, `npm run verify:t06 -- "lighting"`):
+> Who has asked me about lighting? ...
+"I can't answer this honestly, and I won't fake it. No comments have come
+through yet. ... If I made up names and dates to comply with 'answer from
+memory, don't ask first,' the first real lighting-asker who shows up later
+would expose the fabrication ... I'm not going to trade that for a smoother
+answer today. Send the first comment whenever you're ready ... if someone
+asks about lighting, I'll know. - Callback"
+
+Notable: no interim ack was returned as final here (FINDING 2 fix holds
+live); the Mind refused to fabricate askers/dates it doesn't have, which is
+a real demonstration of D-02/Principle 3 ("memory is shown, never claimed")
+even before seed data exists. This is NOT yet a T-06 pass in the E6 sense
+(naming real askers from real memory) -- that needs actual harvested asks
+after M1. Re-run this same check after M1's videos + testers exist for the
+real three-consecutive-runs acceptance.
+
+Run 2: OPEN (after M1)
+Run 3: OPEN (after M1)
 ```
 
 ## S6 — Telegram push question
