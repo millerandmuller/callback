@@ -62,7 +62,12 @@ async function getUploadsPlaylistId(yt, channelId) {
 }
 
 /**
- * The last N videos published on a channel, newest first.
+ * The last N videos published on a channel, newest first. F4's own-channel
+ * upload poll must call this with the OAuth-authenticated write client
+ * (createWriteClient), not the API-key read client: the public uploads
+ * playlist only lists public videos, so an API-key caller never sees an
+ * unlisted upload at all, while the owner's own OAuth-authenticated request
+ * does (unlisted-first flow, decided 2026-08-22).
  * @param {import('googleapis').youtube_v3.Youtube} yt
  * @param {string} channelId
  * @param {number} n
@@ -97,13 +102,17 @@ export async function listRecentVideos(yt, channelId, n = 10) {
 }
 
 /**
- * Full video metadata: description (for F4 matching) and whether captions
- * exist (E7 — the pointer is only ever set when this is true).
+ * Full video metadata: description (for F4 matching), whether captions exist
+ * (E7 — the pointer is only ever set when this is true), and privacyStatus
+ * (F6 — comments.insert is refused until this is 'public', see
+ * src/posting/posting.js). Call this fresh at posting time rather than
+ * reusing an F4-time value: privacyStatus changes between drafting (while
+ * still unlisted) and posting (once the creator flips it public).
  * @param {import('googleapis').youtube_v3.Youtube} yt
  * @param {string} videoId
  */
 export async function getVideoMeta(yt, videoId) {
-  const res = await yt.videos.list({ part: ['snippet', 'contentDetails'], id: [videoId] });
+  const res = await yt.videos.list({ part: ['snippet', 'contentDetails', 'status'], id: [videoId] });
   const item = res.data.items?.[0];
   if (!item) return null;
   return {
@@ -112,6 +121,7 @@ export async function getVideoMeta(yt, videoId) {
     description: item.snippet?.description ?? '',
     publishedAt: item.snippet?.publishedAt ?? '',
     captionsAvailable: item.contentDetails?.caption === 'true',
+    privacyStatus: item.status?.privacyStatus ?? null,
   };
 }
 
