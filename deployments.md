@@ -60,6 +60,32 @@ FIXED (build terminal): `MindClient.ask()` in `src/mind/client.js` now loops pas
 - Persona test channel id (`YOUTUBE_TEST_CHANNEL_ID`): UCwgJK_Fm5G_xxf4P6WoOMKw (uploads playlist UUwgJK_Fm5G_xxf4P6WoOMKw); 0 videos as of 21:55 CDT
 - Dry-run channel (see `seed/dryrun-channel.md`): OPEN
 
+### Round 3 — unlisted-first flow implemented (build terminal, 2026-08-23)
+
+- **F4:** the own-channel upload poll (`runUploadPollCycle`) now polls
+  `listRecentVideos` with the same OAuth-authenticated write client used for
+  posting (`createWriteClient`), not the API-key read client — a channel's
+  public uploads-playlist listing never includes an unlisted video for an
+  API-key caller, only the owner's own OAuth-authenticated request sees it.
+  `index.js` creates `ytWrite` at startup alongside `ytRead`; schedulers
+  only start once both plus the Mind are ready, same as before.
+- **F6:** `postApprovedBatch` now reads the answering video's `privacyStatus`
+  fresh (`videos.list`) before its first `comments.insert` per batch, and
+  refuses to post while it's unlisted or private. A new posting-poll cron
+  runs every `POSTING_POLL_INTERVAL_SEC` (default 30s, new env var, not
+  required by `check-env` — it has a default) and retries every
+  approved-but-unposted batch; the approval page shows "Waiting for the
+  video to go public" with its own 30s refresh while waiting.
+- No live-credential changes this round — `npm run check-env` still 7/7,
+  re-verified after the change. App boots cleanly with all three schedulers
+  (harvest 30m, upload poll 10m, posting poll 30s) and `GET /ledger` returns
+  200 against a live smoke-test start/stop.
+- These two flows (video 3 unlisted → drafted → approved → set public →
+  posted within the 20s throttle) still need a real M1 upload to exercise
+  end to end — tracked as the same M1 milestone as before, unchanged by this
+  round. See `revision_log.md` (Round 3) for the full commit-by-commit
+  breakdown.
+
 ## Submission form fields (DoraHacks)
 
 - Mind ID: ee7b4f3e-f36b-1410-8466-00039ce7df11
