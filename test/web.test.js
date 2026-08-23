@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { openDb, ensureNamespace } from '../src/db/index.js';
 import { mergeExtractionResults } from '../src/ledger/ledger.js';
 import { matchAndDraft } from '../src/matching/match.js';
+import { approveBatch } from '../src/approval/approval.js';
 import { createApp } from '../src/web/server.js';
 
 function seedOneOpenAsk(db) {
@@ -62,6 +63,34 @@ test('/approve/:batchId approve flow: nothing posts, one tap approves, struck ro
 
   const batchAfter = db.prepare('SELECT status FROM batches WHERE id = ?').get(matched.batchId);
   assert.equal(batchAfter.status, 'approved');
+});
+
+test('/approve/:batchId: a failed privacy check shows "waiting", not a misleading static "approved"', async () => {
+  // Adversarial find, Round 3: a transient getVideoMeta error used to leave
+  // waitingForPublic at its default false, rendering an unexplained static
+  // "Batch status: approved" -- indistinguishable from everything being
+  // fine. It must instead show the same honest "waiting" state a genuinely
+  // unlisted/private video would, with the 30s refresh so it retries itself.
+  const db = openDb(':memory:');
+  seedOneOpenAsk(db);
+  const mind = {
+    async ask() {
+      return { timedOut: false, text: '```json\n[{"askId":1,"askerChannelId":"UCkai","replyText":"Kai, here it is.","timestamp":null}]\n```' };
+    },
+  };
+  const matched = await matchAndDraft(db, mind, {
+    namespace: 'own', videoId: 'v2', videoTitle: 'Follow-up', videoDescription: '', captionsText: null, creatorName: 'Mei',
+  });
+  approveBatch(db, matched.batchId);
+
+  const throwingYtWrite = { videos: { async list() { throw new Error('simulated transient network error'); } } };
+  const app = createApp({ db, namespace: 'own', ytWrite: throwingYtWrite });
+  const res = await app.request(`/approve/${matched.batchId}`);
+  const html = await res.text();
+
+  assert.match(html, /Waiting for the video to go public/);
+  assert.doesNotMatch(html, /Batch status: approved/);
+  assert.match(html, /<meta http-equiv="refresh" content="30">/);
 });
 
 test('/dryrun shows a clear OPEN message when credentials are not configured', async () => {

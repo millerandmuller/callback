@@ -48,6 +48,13 @@ export function createApp({ db, namespace, ytRead, ytWrite, mind }) {
         waitingForPublic = meta?.privacyStatus !== 'public';
       } catch (err) {
         console.error('[approve] privacy check failed', err);
+        // Adversarial find, Round 3: leaving waitingForPublic false here made
+        // a transient read failure render a static "Batch status: approved"
+        // with no explanation and no refresh -- indistinguishable from
+        // everything being fine. We genuinely don't know the video is public
+        // when this check itself failed, so say so (true) rather than imply
+        // settled state (misleading); the 30s refresh then retries on its own.
+        waitingForPublic = true;
       }
     }
 
