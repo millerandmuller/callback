@@ -123,6 +123,7 @@ test('Probe 1: two concurrent postApprovedBatch calls on the same batch never do
 
   let insertCalls = 0;
   const fakeYtWrite = {
+    videos: { async list() { return { data: { items: [{ status: { privacyStatus: 'public' } }] } }; } },
     comments: {
       async insert() {
         insertCalls += 1;

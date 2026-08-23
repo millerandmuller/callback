@@ -72,6 +72,7 @@ test('F4 -> F5 -> F6: full callback loop closes an open ask', async () => {
   assert.equal(approval.approvedCount, 1);
 
   const fakeYtWrite = {
+    videos: { async list() { return { data: { items: [{ status: { privacyStatus: 'public' } }] } }; } },
     comments: {
       async insert({ requestBody }) {
         assert.equal(requestBody.snippet.parentId, 'c1');
@@ -115,7 +116,10 @@ test('a struck reply is never posted even after the batch is approved', async ()
   assert.equal(afterApproval.replies.find((r) => r.replyId !== toStrike.replyId).status, 'approved');
 
   let insertCalls = 0;
-  const fakeYtWrite = { comments: { async insert() { insertCalls += 1; return { data: { id: `reply-${insertCalls}`, snippet: { publishedAt: '2026-08-27T00:00:00Z' } } }; } } };
+  const fakeYtWrite = {
+    videos: { async list() { return { data: { items: [{ status: { privacyStatus: 'public' } }] } }; } },
+    comments: { async insert() { insertCalls += 1; return { data: { id: `reply-${insertCalls}`, snippet: { publishedAt: '2026-08-27T00:00:00Z' } } }; } },
+  };
   const result = await postApprovedBatch(db, fakeYtWrite, matched.batchId, { throttleMs: 0 });
   assert.equal(result.posted, 1, 'only the approved reply posts, never the struck one');
   assert.equal(insertCalls, 1);

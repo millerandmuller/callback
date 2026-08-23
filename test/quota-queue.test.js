@@ -30,7 +30,10 @@ test('T-04: quota exhaustion queues a reply instead of failing it', async () => 
   recordUsage(db, 10_000);
 
   let insertCalled = false;
-  const fakeYtWrite = { comments: { async insert() { insertCalled = true; return { data: { id: 'r1', snippet: { publishedAt: '2026-08-27T00:00:00Z' } } }; } } };
+  const fakeYtWrite = {
+    videos: { async list() { return { data: { items: [{ status: { privacyStatus: 'public' } }] } }; } },
+    comments: { async insert() { insertCalled = true; return { data: { id: 'r1', snippet: { publishedAt: '2026-08-27T00:00:00Z' } } }; } },
+  };
   const result = await postApprovedBatch(db, fakeYtWrite, matched.batchId, { throttleMs: 0 });
 
   assert.deepEqual(result, { posted: 0, failed: 0, queued: 1 });

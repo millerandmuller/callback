@@ -1,4 +1,4 @@
-import { insertReply, QUOTA_COST } from '../youtube/client.js';
+import { insertReply, getVideoMeta, QUOTA_COST } from '../youtube/client.js';
 import { canAfford, recordUsage } from '../youtube/quota.js';
 import { markAskAnswered } from '../ledger/ledger.js';
 
@@ -19,11 +19,19 @@ function commentUrl(videoId, commentId) {
  * failing it. On success, closes the loop by marking the ask answered so
  * the Mind's memory (via the caller telling it the outcome) and the ledger
  * agree.
+ *
+ * Before the first comments.insert of a batch, reads the answering video's
+ * privacyStatus fresh (videos.list, via `ytWrite`) and refuses to post while
+ * it is unlisted or private — the unlisted-first flow drafts and approves
+ * the batch while the video is still unlisted, so this is the gate that
+ * keeps a reply from landing before the creator has actually made the video
+ * public. Callers (the approval page, the posting-poll cron) re-check by
+ * calling this again; nothing here retries or blocks internally.
  * @param {import('better-sqlite3').Database} db
  * @param {import('googleapis').youtube_v3.Youtube} ytWrite
  * @param {string} batchId
  * @param {{throttleMs?: number, sleep?: (ms: number) => Promise<void>}} [opts]
- * @returns {Promise<{posted: number, failed: number, queued: number}>}
+ * @returns {Promise<{posted: number, failed: number, queued: number, waitingForPublic?: true, privacyStatus?: string | null}>}
  */
 export async function postApprovedBatch(db, ytWrite, batchId, opts = {}) {
   const throttleMs = opts.throttleMs ?? 20_000;
@@ -43,6 +51,16 @@ export async function postApprovedBatch(db, ytWrite, batchId, opts = {}) {
     .prepare(`SELECT id FROM batch_replies WHERE batch_id = ? AND status = 'approved'`)
     .all(batchId)
     .map((r) => r.id);
+
+  if (candidateIds.length === 0) {
+    return { posted: 0, failed: 0, queued: 0 };
+  }
+
+  const videoMeta = await getVideoMeta(ytWrite, batch.video_id);
+  const privacyStatus = videoMeta?.privacyStatus ?? null;
+  if (privacyStatus !== 'public') {
+    return { posted: 0, failed: 0, queued: 0, waitingForPublic: true, privacyStatus };
+  }
 
   // Claim statement: atomically flips 'approved' -> 'posting' and reports how
   // many rows it actually changed. better-sqlite3 statements run
