@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server';
 import { config } from './config.js';
 import { openDb, ensureNamespace } from './db/index.js';
-import { createReadClient } from './youtube/client.js';
+import { createReadClient, createWriteClient } from './youtube/client.js';
 import * as ytModule from './youtube/client.js';
 import { createMindClient } from './mind/client.js';
 import { createApp } from './web/server.js';
@@ -37,11 +37,13 @@ async function main() {
   const db = openDb();
 
   let ytRead;
+  let ytWrite;
   let mind;
 
   if (config.youtube.testChannelId) {
     ensureNamespace(db, { name: NAMESPACE, kind: 'own', channelId: config.youtube.testChannelId });
     ytRead = tryCreate('YouTube read client', createReadClient);
+    ytWrite = tryCreate('YouTube write client', createWriteClient);
   } else {
     console.warn('[startup] YOUTUBE_TEST_CHANNEL_ID is not set — pages will render from whatever is already in the local DB, harvest/publish-detect cannot run.');
   }
@@ -56,15 +58,15 @@ async function main() {
     }
   }
 
-  const app = createApp({ db, namespace: NAMESPACE, ytRead, mind });
+  const app = createApp({ db, namespace: NAMESPACE, ytRead, ytWrite, mind });
 
   serve({ fetch: app.fetch, port: config.server.port }, (info) => {
     console.log(`Callback listening on http://localhost:${info.port}`);
   });
 
-  if (ytRead && mind) {
-    startSchedulers(db, ytRead, mind, ytModule);
-    console.log(`Schedulers running: harvest every ${config.schedule.harvestIntervalMin}m, upload poll every ${config.schedule.uploadPollIntervalMin}m.`);
+  if (ytRead && ytWrite && mind) {
+    startSchedulers(db, ytRead, ytWrite, mind, ytModule);
+    console.log(`Schedulers running: harvest every ${config.schedule.harvestIntervalMin}m, upload poll every ${config.schedule.uploadPollIntervalMin}m, posting poll every ${config.schedule.postingPollIntervalSec}s.`);
   } else {
     console.warn('[startup] M0 not complete — schedulers not started. See SETUP.md.');
   }

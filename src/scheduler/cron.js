@@ -5,6 +5,7 @@ import { mergeExtractionResults, getOpenAsks } from '../ledger/ledger.js';
 import { matchAndDraft } from '../matching/match.js';
 import { buildExtractionPrompt } from '../prompts/extraction.js';
 import { askMindForJson } from '../mind/parse.js';
+import { postApprovedBatch } from '../posting/posting.js';
 
 /**
  * F1: every HARVEST_INTERVAL_MIN minutes, pulls new comments for the 'own'
@@ -57,19 +58,25 @@ async function runHarvestCycle(db, ytRead, mind) {
 /**
  * F4: every UPLOAD_POLL_INTERVAL_MIN minutes, checks for a new video on the
  * test channel and, if one has appeared since the last check, runs
- * matchAndDraft against every currently open ask.
+ * matchAndDraft against every currently open ask. `ytWrite` (the
+ * OAuth-authenticated client, not the API-key read client) is required here
+ * so an unlisted upload is detected while it is still unlisted — the
+ * public uploads playlist an API key can see never lists unlisted videos at
+ * all (unlisted-first flow, decided 2026-08-22: drafting starts during the
+ * 4-5 minutes the video sits unlisted, so the reply is ready the moment the
+ * creator flips it public).
  * @param {import('better-sqlite3').Database} db
- * @param {import('googleapis').youtube_v3.Youtube} ytRead
+ * @param {import('googleapis').youtube_v3.Youtube} ytWrite
  * @param {import('../mind/client.js').MindClient} mind
  */
-async function runUploadPollCycle(db, ytRead, mind, { listRecentVideos, getVideoMeta }) {
-  const [latest] = await listRecentVideos(ytRead, config.youtube.testChannelId, 1);
+async function runUploadPollCycle(db, ytWrite, mind, { listRecentVideos, getVideoMeta }) {
+  const [latest] = await listRecentVideos(ytWrite, config.youtube.testChannelId, 1);
   if (!latest) return { newVideo: false };
 
   const known = db.prepare(`SELECT 1 FROM videos WHERE id = ? AND namespace = 'own'`).get(latest.videoId);
   if (known) return { newVideo: false };
 
-  const meta = await getVideoMeta(ytRead, latest.videoId);
+  const meta = await getVideoMeta(ytWrite, latest.videoId);
   if (getOpenAsks(db, 'own').length === 0) return { newVideo: true, matched: false, reason: 'no open asks' };
 
   const matched = await matchAndDraft(db, mind, {
@@ -84,23 +91,61 @@ async function runUploadPollCycle(db, ytRead, mind, { listRecentVideos, getVideo
 }
 
 /**
- * Starts both cron jobs. Returns the two ScheduledTask handles so a caller
- * (or a test) can stop them.
+ * F6: every POSTING_POLL_INTERVAL_SEC seconds, attempts to post every batch
+ * that has been approved but not yet fully posted. postApprovedBatch itself
+ * refuses to call comments.insert until the answering video's privacyStatus
+ * is 'public' (checked fresh on every call — see src/posting/posting.js), so
+ * this poller is what makes the brief's "re-check every 30 s" happen: it is
+ * decoupled from whether anyone has the approval page open, and posts within
+ * one poll interval of the creator flipping the video public in YouTube
+ * Studio.
+ * @param {import('better-sqlite3').Database} db
+ * @param {import('googleapis').youtube_v3.Youtube} ytWrite
+ */
+async function runPostingPollCycle(db, ytWrite) {
+  const approvedBatches = db
+    .prepare(
+      `SELECT b.id FROM batches b JOIN namespaces n ON n.name = b.namespace
+       WHERE n.kind = 'own' AND b.status = 'approved'`
+    )
+    .all();
+
+  const results = [];
+  for (const { id } of approvedBatches) {
+    try {
+      results.push({ batchId: id, ...(await postApprovedBatch(db, ytWrite, id)) });
+    } catch (err) {
+      console.error(`[posting-poll] batch ${id}:`, err);
+    }
+  }
+  return results;
+}
+
+/**
+ * Starts all three cron jobs. Returns the ScheduledTask handles so a caller
+ * (or a test) can stop them. Harvest (F1) reads with the API-key client;
+ * the upload poll (F4) and posting poll (F6) both need the OAuth write
+ * client — F4 to see unlisted uploads, F6 to call comments.insert.
  * @param {import('better-sqlite3').Database} db
  * @param {import('googleapis').youtube_v3.Youtube} ytRead
+ * @param {import('googleapis').youtube_v3.Youtube} ytWrite
  * @param {import('../mind/client.js').MindClient} mind
  * @param {typeof import('../youtube/client.js')} ytModule injected so cron.js has no hard import cycle with youtube/client.js at module scope beyond what's needed
  */
-export function startSchedulers(db, ytRead, mind, ytModule) {
+export function startSchedulers(db, ytRead, ytWrite, mind, ytModule) {
   const harvestTask = cron.schedule(`*/${config.schedule.harvestIntervalMin} * * * *`, () => {
     runHarvestCycle(db, ytRead, mind).catch((err) => console.error('[harvest]', err));
   });
 
   const uploadPollTask = cron.schedule(`*/${config.schedule.uploadPollIntervalMin} * * * *`, () => {
-    runUploadPollCycle(db, ytRead, mind, ytModule).catch((err) => console.error('[upload-poll]', err));
+    runUploadPollCycle(db, ytWrite, mind, ytModule).catch((err) => console.error('[upload-poll]', err));
   });
 
-  return { harvestTask, uploadPollTask };
+  const postingPollTask = cron.schedule(`*/${config.schedule.postingPollIntervalSec} * * * * *`, () => {
+    runPostingPollCycle(db, ytWrite).catch((err) => console.error('[posting-poll]', err));
+  });
+
+  return { harvestTask, uploadPollTask, postingPollTask };
 }
 
-export { runHarvestCycle, runUploadPollCycle };
+export { runHarvestCycle, runUploadPollCycle, runPostingPollCycle };
