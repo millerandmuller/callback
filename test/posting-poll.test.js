@@ -40,7 +40,7 @@ async function draftAndApproveOneReply(db) {
 /** A slow-but-realistic fake: the privacy read itself takes a beat, exactly the kind
  * of async gap a real HTTPS round trip creates -- enough for a second overlapping
  * runPostingPollCycle() call to observe the batch mid-flight if the guard didn't exist. */
-function slowFakeYtWrite() {
+function slowFakeYtWrite(privacyStatus = 'public') {
   let listCalls = 0;
   let insertCalls = 0;
   return {
@@ -50,7 +50,7 @@ function slowFakeYtWrite() {
       async list() {
         listCalls += 1;
         await new Promise((resolve) => setTimeout(resolve, 25));
-        return { data: { items: [{ status: { privacyStatus: 'public' } }] } };
+        return { data: { items: [{ status: { privacyStatus } }] } };
       },
     },
     comments: {
@@ -84,18 +84,33 @@ test('runPostingPollCycle: two overlapping ticks on the same batch only ever run
   assert.equal(reply.status, 'posted');
 });
 
-test('runPostingPollCycle: the in-flight guard releases after completion, so a later tick can process a NEW batch', async () => {
+test('runPostingPollCycle: the in-flight guard releases after completion, so a later tick can retry a batch still waiting on the video going public', async () => {
+  // Re-review finding (diff-based adversarial re-review of commit 9a6b6c7): a
+  // version of this test that only re-runs against an already-*posted* batch
+  // proves nothing about release, since the SQL query (`WHERE status =
+  // 'approved'`) would exclude that batch on tick 2 regardless of whether the
+  // guard leaked. The scenario where release is actually load-bearing is a
+  // batch that's STILL 'approved' after a tick finishes (because the video
+  // wasn't public yet) -- if the guard leaked here, that batch would be
+  // silently skipped forever on every later tick, never posting even once the
+  // video does go public.
   const db = openDb(':memory:');
   const batchId = await draftAndApproveOneReply(db);
-  const ytWrite = slowFakeYtWrite();
 
-  await runPostingPollCycle(db, ytWrite);
-  assert.equal(ytWrite.insertCalls(), 1);
+  const waitingYtWrite = slowFakeYtWrite('unlisted');
+  const tick1 = await runPostingPollCycle(db, waitingYtWrite);
+  assert.equal(tick1.length, 1);
+  assert.equal(tick1[0].waitingForPublic, true);
+  assert.equal(waitingYtWrite.insertCalls(), 0);
+  const batchAfterTick1 = db.prepare(`SELECT status FROM batches WHERE id = ?`).get(batchId);
+  assert.equal(batchAfterTick1.status, 'approved', 'still approved, still waiting -- the query on tick 2 will see this batch again');
 
-  // The batch is now fully posted (status != 'approved'), so a later tick simply
-  // finds nothing to do -- this also confirms the guard didn't leak and block
-  // a batch id forever after it finished.
-  const secondTick = await runPostingPollCycle(db, ytWrite);
-  assert.deepEqual(secondTick, []);
-  assert.equal(ytWrite.insertCalls(), 1, 'no re-post on a later tick once already posted');
+  const publicYtWrite = slowFakeYtWrite('public');
+  const tick2 = await runPostingPollCycle(db, publicYtWrite);
+  assert.equal(publicYtWrite.listCalls(), 1, 'guard released after tick 1 -- tick 2 actually re-checked this batch, was not silently skipped');
+  assert.equal(publicYtWrite.insertCalls(), 1);
+  assert.equal(tick2[0].posted, 1);
+
+  const replyAfterTick2 = db.prepare(`SELECT status FROM batch_replies WHERE batch_id = ?`).get(batchId);
+  assert.equal(replyAfterTick2.status, 'posted');
 });
