@@ -4,6 +4,13 @@ Running log of every account, credential, and verify-script output collected
 during the build. M0 (accounts and credentials) closed 2026-08-22 21:55 CDT; `npm run check-env` 7 of 7. M1 items (seed data, dry-run channel) still OPEN (see `SETUP.md`) — this file is also the source for the
 DoraHacks submission form fields and the S4 writeup.
 
+## Repository
+
+- URL: https://github.com/fiya-chris-and-AI/callback
+- Visibility: PRIVATE (team decision, confirmed via `gh repo view`), MIT license (auto-detected from the committed `LICENSE` file)
+- Pushed: 2026-08-22, 6 commits, `main` branch
+- **Must be switched to public before the Thursday 2026-08-27 22:00 CDT submission deadline** — DoraHacks requires a public code repository. Not yet done. Track this as an open item until flipped.
+
 ## Minds
 
 - Mind name: Callback
