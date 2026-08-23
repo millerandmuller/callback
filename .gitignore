@@ -3,6 +3,14 @@ node_modules/
 .env.*
 !.env.example
 
+# Personal submission-form data (X handle, WhatsApp number) -- never in the
+# public/private submission repo. See private/submission-fields.md locally.
+private/
+
+# Real tester names/handles from S1 seed data -- personal data, not for the
+# repo. seed/testers.example.md (committed) carries the same template.
+seed/testers.md
+
 # Local runtime database (not the committed demo snapshot)
 data/*.sqlite
 data/*.sqlite-journal

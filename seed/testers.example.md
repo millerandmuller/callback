@@ -1,4 +1,8 @@
-# Testers (S1 seed data)
+# Testers (S1 seed data) — template
+
+> This is the committed template. Copy it to `seed/testers.md` (gitignored —
+> real tester names/handles are personal data and never go in the repo) and
+> fill that copy in instead of this file.
 
 > OPEN until M1 (Sun Aug 23). Fill in as testers are invited and comment.
 > Acceptance (S1): >= 10 distinct askers, >= 3 repeat askers, >= 2 non-ask

@@ -17,7 +17,8 @@
     "verify:t03": "node scripts/verify/t03-order-proof.js",
     "verify:t04": "node scripts/verify/t04-quota-queue.js",
     "verify:t05": "node scripts/verify/t05-match-drafts.js",
-    "verify:t06": "node scripts/verify/t06-mind-memory.js"
+    "verify:t06": "node scripts/verify/t06-mind-memory.js",
+    "setup:oauth": "node scripts/setup/oauth-token.js"
   },
   "dependencies": {
     "@animocabrands/minds-client-lib": "^0.1.3",
