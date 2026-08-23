@@ -33,6 +33,7 @@ export const config = {
   schedule: {
     harvestIntervalMin: Number(process.env.HARVEST_INTERVAL_MIN || 30),
     uploadPollIntervalMin: Number(process.env.UPLOAD_POLL_INTERVAL_MIN || 10),
+    postingPollIntervalSec: Number(process.env.POSTING_POLL_INTERVAL_SEC || 30),
   },
 };
 
