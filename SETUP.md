@@ -108,6 +108,15 @@ long-form, captions, active comments) for E5. Record it in
 `seed/dryrun-channel.md`. Try it via `POST /dryrun` once the API key is set
 — no OAuth needed for this, since dry-run never posts.
 
+**Pre-warm it before recording.** A first-ever dry run on a channel with a
+realistic comment volume took 4-5 minutes per video in live testing (real
+Mind classification latency, not a bug) — far past a demo-friendly wait.
+`harvest()` is idempotent and the Mind is only asked to classify comments it
+hasn't seen before, so running `/dryrun` on the *same* channel a second time
+with no new remote activity in between is near-instant. Trigger it once
+during rehearsal, well ahead of the actual recording take, so the live-demo
+trigger only has to classify whatever's arrived since.
+
 ## After this file
 
 Run `npm run check-env`. Once every line is checked, `npm start` will start

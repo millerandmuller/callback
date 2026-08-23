@@ -89,6 +89,10 @@ npm run verify:t05 <batchId>          # F4: drafts pass the CTA/link/hashtag/emo
 npm run verify:t06 "<topic>"          # E6: Mind answers "who asked about X" from memory
 ```
 
+E5's dry run needs the same pre-warming as the demo does — see `SETUP.md`
+section 7: a channel's first-ever dry run takes minutes (real Mind
+classification latency), a re-run with nothing new to classify is instant.
+
 Paste every script's output into `deployments.md` — that file is also the
 source for the DoraHacks submission form and the S4 writeup.
 
