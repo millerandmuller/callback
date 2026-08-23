@@ -5,6 +5,15 @@
  * breaks, <br> becomes a newline, everything else is just removed -- this is
  * a targeted cleanup for locating a fenced JSON block and for human-readable
  * text, not a general HTML-to-text converter.
+ *
+ * The tag-matching regex requires the character right after `<` to be a
+ * letter, `/`, or `!` (real tags never start `< ` or `<3`), specifically so
+ * a genuine reply containing two literal angle brackets as content -- a
+ * numeric range ("ISO < 800 and f-stop > 2.8"), a `<3` emoticon -- is never
+ * mistaken for a tag and silently deleted (adversarial find: a naive
+ * `<[^>]+>` swallowed everything between two such brackets, including the
+ * far side's own content, while staying syntactically valid JSON so nothing
+ * downstream ever noticed).
  * @param {string} html
  * @returns {string}
  */
@@ -13,7 +22,7 @@ export function stripHtml(html) {
   return html
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/(p|div)>/gi, '\n\n')
-    .replace(/<[^>]+>/g, '')
+    .replace(/<\/?[a-zA-Z!][^<>]*>/g, '')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
     .replace(/&lt;/gi, '<')

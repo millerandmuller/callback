@@ -12,6 +12,18 @@ export class MindClient {
   constructor(raw) {
     this.raw = raw;
     this.alias = config.minds.conversationAlias;
+    // Serializes every ask() call against this conversation. Found live
+    // (Round 2 review): two concurrent ask() calls on the same alias can
+    // cross-talk -- waitForReply's reply-matching isn't scoped strictly
+    // enough to guarantee it returns THIS call's reply rather than a
+    // different concurrent caller's, when both are mid-flight on
+    // callback-main at once. In production this is reachable whenever the
+    // harvest cron (F1) and the upload-poll cron (F4) fire close enough
+    // together that their Mind calls overlap -- exactly Beat 3/4 territory.
+    // Chaining every call onto this queue guarantees no two
+    // sendMessage+waitForReply cycles ever run concurrently, so there is
+    // never more than one unanswered question in flight to cross-talk with.
+    this._queue = Promise.resolve();
   }
 
   /**
@@ -31,12 +43,30 @@ export class MindClient {
    * ack, within the same overall timeout, rather than returning it as the
    * final reply. Reply text is always HTML-stripped first (the Builder API
    * wraps messageText in simple HTML, e.g. "<p>ok</p>", confirmed live).
+   * Callers can safely call this concurrently -- each call queues behind
+   * whatever is already in flight on this conversation (see the constructor
+   * note) and gets its own full timeout budget starting from when it
+   * actually begins, not from when it was enqueued.
    * @param {string} messageText
    * @param {{timeoutMs?: number}} [opts]
    * @returns {Promise<{timedOut: true} | {timedOut: false, text: string, raw: import('@animocabrands/minds-client-lib').MessageRecord}>}
    */
-  async ask(messageText, opts = {}) {
+  ask(messageText, opts = {}) {
     requireEnv('minds');
+    const task = this._queue.then(
+      () => this._askOnce(messageText, opts),
+      () => this._askOnce(messageText, opts)
+    );
+    // Never let one call's rejection break the queue for calls after it.
+    this._queue = task.then(
+      () => undefined,
+      () => undefined
+    );
+    return task;
+  }
+
+  /** @private */
+  async _askOnce(messageText, opts) {
     await this.raw.sendMessage({ alias: this.alias, messageText });
 
     const deadline = Date.now() + (opts.timeoutMs ?? 180_000);
@@ -55,7 +85,13 @@ export class MindClient {
       if (outcome.timedOut) return { timedOut: true };
 
       const text = stripHtml(outcome.reply.messageText ?? '');
-      if (isInterimAck(text)) {
+      // A message that's an interim ack, OR empty/whitespace-only once
+      // stripped (e.g. "<p></p>", "<br>"), is never a real final answer for
+      // anything this app asks the Mind -- keep waiting past it too
+      // (adversarial find: isInterimAck('') is deliberately false since an
+      // empty string isn't ack-phrase-shaped, but returning it as "final"
+      // would abandon whatever real reply follows).
+      if (isInterimAck(text) || text.length === 0) {
         afterFingerprint = outcome.reply.fingerprint;
         continue;
       }
