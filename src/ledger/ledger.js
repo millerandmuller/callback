@@ -80,13 +80,15 @@ export function mergeExtractionResults(db, { namespace, videoId, items }) {
         continue;
       }
 
-      // The Mind's extraction reply is untrusted input: a comment marked
-      // isAsk=true with no usable topic/askerChannelId can't become a valid
-      // ask row (topic is NOT NULL on `asks`). Skip it rather than let the
-      // whole batch's transaction throw and roll back every other,
-      // correctly-classified comment in the same batch (this was reachable
-      // live via POST /dryrun on one malformed comment -- adversarial find).
-      if (!item.askerChannelId || !item.topic?.trim()) {
+      // The Mind's extraction reply is untrusted input: askerChannelId,
+      // topic, and askerName all feed NOT NULL columns (people.asker_channel_id,
+      // asks.topic, people.display_name). A presence-only check isn't enough --
+      // a wrong-typed value (topic as a number/object) still throws inside the
+      // transaction below and rolls back every other, correctly-classified
+      // item in the same batch (re-review found this gap in the first pass
+      // of this fix, which only checked for missing fields, not wrong types).
+      const isUsableString = (value) => typeof value === 'string' && value.trim().length > 0;
+      if (!isUsableString(item.askerChannelId) || !isUsableString(item.topic) || !isUsableString(item.askerName)) {
         malformed += 1;
         continue;
       }

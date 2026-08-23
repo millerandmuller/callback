@@ -40,6 +40,37 @@ test('Probe 2/3: a malformed extraction item (isAsk=true, no topic) is skipped, 
   assert.deepEqual(open.map((a) => a.askerName).sort(), ['Kai', 'Mo']);
 });
 
+test('Re-review follow-up: a wrong-TYPED (not just missing) field is also skipped, not thrown -- topic as a number/object, askerChannelId as an object, askerName omitted', () => {
+  const db = openDb(':memory:');
+  ensureNamespace(db, { name: 'own', kind: 'own', channelId: 'UCowner' });
+  db.prepare(`INSERT INTO videos (id, namespace, title, published_at) VALUES ('v1','own','t','2026-08-01T00:00:00Z')`).run();
+  const insert = db.prepare(
+    `INSERT INTO comments (id, namespace, video_id, author_channel_id, author_display_name, text, published_at) VALUES (?, 'own', 'v1', ?, ?, ?, ?)`
+  );
+  insert.run('c1', 'UCa', 'A', 'a', '2026-08-23T00:00:00Z');
+  insert.run('c2', 'UCb', 'B', 'b', '2026-08-23T00:01:00Z');
+  insert.run('c3', 'UCc', 'C', 'c', '2026-08-23T00:02:00Z');
+  insert.run('c4', 'UCd', 'D', 'd', '2026-08-23T00:03:00Z');
+
+  assert.doesNotThrow(() => {
+    const result = mergeExtractionResults(db, {
+      namespace: 'own',
+      videoId: 'v1',
+      items: [
+        { commentId: 'c1', askerChannelId: 'UCa', askerName: 'A', isAsk: true, isAbusive: false, topic: 42, quote: 'a', publishedAt: '2026-08-23T00:00:00Z' }, // topic: number
+        { commentId: 'c2', askerChannelId: 'UCb', askerName: 'B', isAsk: true, isAbusive: false, topic: { foo: 'bar' }, quote: 'b', publishedAt: '2026-08-23T00:01:00Z' }, // topic: object
+        { commentId: 'c3', askerChannelId: { weird: true }, askerName: 'C', isAsk: true, isAbusive: false, topic: 'mic', quote: 'c', publishedAt: '2026-08-23T00:02:00Z' }, // askerChannelId: object
+        { commentId: 'c4', askerChannelId: 'UCd', isAsk: true, isAbusive: false, topic: 'lighting', quote: 'd', publishedAt: '2026-08-23T00:03:00Z' }, // askerName: omitted
+      ],
+    });
+    assert.equal(result.asksCreated, 0);
+    assert.equal(result.malformed, 4, 'every wrong-typed/missing field is caught, none reach the NOT NULL insert');
+  });
+
+  assert.equal(getOpenAsks(db, 'own').length, 0);
+  assert.equal(db.prepare('SELECT COUNT(*) as n FROM people').get().n, 0);
+});
+
 test('Probe 3: POST /dryrun survives a malformed Mind classification on one comment instead of returning a bare 500', async () => {
   const db = openDb(':memory:');
   const fakeYtRead = {
