@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Local runtime database (not the committed demo snapshot)
+data/*.sqlite
+data/*.sqlite-journal
+data/*.sqlite-wal
+data/*.sqlite-shm
+!data/demo/callback-demo.sqlite
+
+*.log
+.DS_Store

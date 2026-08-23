@@ -1,0 +1,156 @@
+/* Ledger-like calm (Section 5). One typeface, rows not cards, dates and
+   display names as the only decoration. No charts, no sentiment, no scores. */
+
+:root {
+  --ink: #1c1c1c;
+  --paper: #fdfdfb;
+  --line: #e3e1da;
+  --muted: #6b6b64;
+  --accent: #2f5d50;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 2.5rem 1.5rem;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 46rem;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin: 0 0 2rem;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.row:first-of-type {
+  border-top: 1px solid var(--line);
+}
+
+.row-name {
+  font-weight: 600;
+}
+
+.row-dates {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.row-quote {
+  font-style: italic;
+}
+
+.creator-label {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+.empty {
+  color: var(--muted);
+  padding: 2rem 0;
+}
+
+.section-heading {
+  margin-top: 2.5rem;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.approval-header {
+  margin-bottom: 1.5rem;
+}
+
+.reply-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.original-comment {
+  color: var(--muted);
+  padding-left: 1rem;
+  border-left: 2px solid var(--line);
+}
+
+.reply-text {
+  padding-left: 1rem;
+  border-left: 2px solid var(--accent);
+}
+
+.reply-status {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+form.inline {
+  display: inline;
+}
+
+button, input[type='text'] {
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+}
+
+button.skip {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+input[type='text'] {
+  padding: 0.6rem;
+  border: 1px solid var(--line);
+  width: 20rem;
+  max-width: 100%;
+}
+
+.banner {
+  background: #f4efe1;
+  border: 1px solid #ddd2ac;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.readonly-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}

@@ -1,0 +1,31 @@
+{
+  "name": "callback",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Your comments section remembers. So does your Mind. Built for Creative Minds Jam #1: Hong Kong.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test",
+    "check-env": "node scripts/setup/check-env.js",
+    "verify:t01": "node scripts/verify/t01-harvest-idempotent.js",
+    "verify:t02": "node scripts/verify/t02-posting-parentid.js",
+    "verify:t03": "node scripts/verify/t03-order-proof.js",
+    "verify:t04": "node scripts/verify/t04-quota-queue.js",
+    "verify:t05": "node scripts/verify/t05-match-drafts.js",
+    "verify:t06": "node scripts/verify/t06-mind-memory.js"
+  },
+  "dependencies": {
+    "@animocabrands/minds-client-lib": "^0.1.3",
+    "better-sqlite3": "^11.3.0",
+    "dotenv": "^16.4.5",
+    "googleapis": "^144.0.0",
+    "hono": "^4.6.3",
+    "@hono/node-server": "^1.13.1",
+    "node-cron": "^3.0.3"
+  }
+}
