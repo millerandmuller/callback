@@ -45,6 +45,37 @@ test('same person asking the same topic twice yields one ask row with two events
   assert.equal(open[0].last_asked_at, '2026-08-25T08:12:40Z');
 });
 
+test('repeat ask arriving OUT of chronological order still yields correct first/last dates (2026-08-25 live finding: the Mind returns batches in its own order)', () => {
+  const db = openDb(':memory:');
+  const namespace = 'own';
+  const videoId = 'v1';
+  seedVideoAndComments(db, {
+    namespace,
+    videoId,
+    comments: [
+      { id: 'c1', authorChannelId: 'UCkai', authorDisplayName: 'Kai', text: 'how do you light the desk?', publishedAt: '2026-08-23T19:04:11Z' },
+      { id: 'c2', authorChannelId: 'UCkai', authorDisplayName: 'Kai', text: 'still wondering about the glare', publishedAt: '2026-08-25T08:12:40Z' },
+    ],
+  });
+
+  // Same two comments as the test above, but the NEWER one is merged first —
+  // exactly what happened live with T1's Monday-before-Sunday batch order.
+  mergeExtractionResults(db, {
+    namespace,
+    videoId,
+    items: [
+      { commentId: 'c2', askerChannelId: 'UCkai', askerName: 'Kai', isAsk: true, isAbusive: false, topic: 'desk lighting', quote: 'still wondering about the glare', publishedAt: '2026-08-25T08:12:40Z' },
+      { commentId: 'c1', askerChannelId: 'UCkai', askerName: 'Kai', isAsk: true, isAbusive: false, topic: 'desk lighting', quote: 'how do you light the desk?', publishedAt: '2026-08-23T19:04:11Z' },
+    ],
+  });
+
+  const open = getOpenAsks(db, namespace);
+  assert.equal(open.length, 1);
+  assert.equal(open[0].events.length, 2);
+  assert.equal(open[0].first_asked_at, '2026-08-23T19:04:11Z', 'first_asked_at must be the OLDER date even when it arrives second');
+  assert.equal(open[0].last_asked_at, '2026-08-25T08:12:40Z');
+});
+
 test('abusive and non-ask comments never appear as asks', () => {
   const db = openDb(':memory:');
   const namespace = 'own';

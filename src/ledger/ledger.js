@@ -27,9 +27,18 @@ const insertAskStmt = (db) =>
      VALUES (@personId, @namespace, @topic, 'open', @askedAt, @askedAt)`
   );
 
+// Maintains BOTH date bounds, because ask events do not arrive in
+// chronological order: the Mind returns a batch in its own order (observed
+// live 2026-08-25 — T1's Monday comment was processed before the Sunday one,
+// leaving first_asked_at a day late), and an older comment can also surface
+// in a later harvest (e.g. released from a moderation hold). ISO-8601 UTC
+// strings compare correctly as strings.
 const bumpAskStmt = (db) =>
   db.prepare(
-    `UPDATE asks SET last_asked_at = @askedAt WHERE id = @askId AND last_asked_at < @askedAt`
+    `UPDATE asks SET
+       last_asked_at = CASE WHEN @askedAt > last_asked_at THEN @askedAt ELSE last_asked_at END,
+       first_asked_at = CASE WHEN @askedAt < first_asked_at THEN @askedAt ELSE first_asked_at END
+     WHERE id = @askId`
   );
 
 const insertAskEventStmt = (db) =>

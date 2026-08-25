@@ -16,6 +16,13 @@ test('parseFencedJson returns null for prose with no valid JSON', () => {
   assert.equal(parseFencedJson('just some words'), null);
 });
 
+test('parseFencedJson reads a fence with no newline after the opener (2026-08-25 live finding: HTML stripping can collapse the reply to one line)', () => {
+  // Exactly the shape the first live extraction returned: ```json[{...}]```
+  assert.deepEqual(parseFencedJson('```json[{"a": 1}]```'), [{ a: 1 }]);
+  assert.deepEqual(parseFencedJson('```json[{"a": 1}]\n```'), [{ a: 1 }]);
+  assert.deepEqual(parseFencedJson('```{"ok": true}```'), { ok: true });
+});
+
 test('askMindForJson succeeds on the first reply when it parses', async () => {
   const fakeMind = {
     calls: 0,

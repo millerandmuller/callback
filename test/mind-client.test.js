@@ -61,11 +61,13 @@ test('ask() keeps waiting past an interim ack and returns the later, real reply 
   ];
   let call = 0;
   const fakeRaw = {
+    async getLatestHistoryFingerprint() { return undefined; }, // empty history before the ask
     async sendMessage() { return {}; },
     async ensureConversation() {},
     async waitForReply({ afterFingerprint }) {
-      // First call has no afterFingerprint (fresh ask); after skipping the
-      // ack, the second call must be scoped past the ack's own fingerprint.
+      // First call carries the pre-send anchor (undefined on empty history);
+      // after skipping the ack, the second call must be scoped past the
+      // ack's own fingerprint.
       if (call === 0) assert.equal(afterFingerprint, undefined);
       if (call === 1) assert.equal(afterFingerprint, 'ack-1');
       const reply = events[call];
@@ -84,6 +86,7 @@ test('ask() keeps waiting past an interim ack and returns the later, real reply 
 
 test('ask() returns timedOut if only interim acks arrive before the deadline', async () => {
   const fakeRaw = {
+    async getLatestHistoryFingerprint() { return undefined; },
     async sendMessage() { return {}; },
     async waitForReply() {
       return { timedOut: false, reply: { messageText: "<p>Still thinking.</p>", fingerprint: `ack-${Math.random()}` } };
@@ -101,6 +104,7 @@ test('ask() keeps waiting past an empty/whitespace-only reply too, not just phra
   ];
   let call = 0;
   const fakeRaw = {
+    async getLatestHistoryFingerprint() { return undefined; },
     async sendMessage() { return {}; },
     async waitForReply({ afterFingerprint }) {
       if (call === 1) assert.equal(afterFingerprint, 'blank-1');
@@ -120,6 +124,7 @@ test('ask() serializes concurrent calls so they never cross-talk on the same con
   let crossTalkDetected = false;
   const sendLog = [];
   const fakeRaw = {
+    async getLatestHistoryFingerprint() { return undefined; },
     async sendMessage({ messageText }) {
       if (inFlight) crossTalkDetected = true; // a second question was sent while the first was still unanswered
       inFlight = true;
@@ -146,6 +151,7 @@ test('ask() serializes concurrent calls so they never cross-talk on the same con
 test('ask() keeps serving later calls even if an earlier queued call times out', async () => {
   let call = 0;
   const fakeRaw = {
+    async getLatestHistoryFingerprint() { return undefined; },
     async sendMessage() { call += 1; return {}; },
     async waitForReply() {
       if (call === 1) return { timedOut: true };
@@ -162,6 +168,7 @@ test('ask() keeps serving later calls even if an earlier queued call times out',
 test('ask() returns a genuinely final short reply immediately, without waiting for a second message', async () => {
   let calls = 0;
   const fakeRaw = {
+    async getLatestHistoryFingerprint() { return undefined; },
     async sendMessage() { return {}; },
     async waitForReply() {
       calls += 1;
@@ -172,4 +179,25 @@ test('ask() returns a genuinely final short reply immediately, without waiting f
   const result = await mind.ask('Reply with the single word: ok');
   assert.equal(calls, 1);
   assert.equal(result.text, 'ok');
+});
+
+test('ask() anchors the reply search past messages that existed before the send (2026-08-25 live finding: a back-to-back sequential ask received the previous question\'s answer as its own)', async () => {
+  // The conversation history already ends with the Mind's answer to a
+  // PREVIOUS question when this ask() begins. Without a pre-send anchor,
+  // the lib's reply matching would hand that stale message straight back.
+  const realReply = { messageText: '<p>```json[{"answerTo":"this question"}]```</p>', fingerprint: 'f-101' };
+  let sent = false;
+  const fakeRaw = {
+    async getLatestHistoryFingerprint() { return 'f-100'; }, // fingerprint of the stale previous answer
+    async sendMessage() { sent = true; return {}; },
+    async waitForReply({ afterFingerprint }) {
+      assert.equal(sent, true, 'the anchor must be captured before sendMessage, the wait must run after it');
+      assert.equal(afterFingerprint, 'f-100', 'the very first wait must be scoped past the pre-send anchor');
+      return { timedOut: false, reply: realReply };
+    },
+  };
+  const mind = new MindClient(fakeRaw);
+  const result = await mind.ask('new question');
+  assert.equal(result.timedOut, false);
+  assert.equal(result.text, '```json[{"answerTo":"this question"}]```');
 });

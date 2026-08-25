@@ -54,14 +54,20 @@ export function isInterimAck(text) {
 /**
  * Extracts the first fenced code block from a Mind reply and parses it as JSON.
  * Accepts ```json ... ``` or plain ``` ... ``` fences (the Mind does not always
- * label the fence). Returns null on no fence or invalid JSON — callers decide
- * whether to re-ask or surface "could not parse" (see askMindForJson below).
+ * label the fence). The fence opener is NOT required to be followed by a
+ * newline: confirmed live 2026-08-25, the Builder API's HTML wrapping can
+ * collapse the reply to "```json[{...}]```" on one line, and requiring \n
+ * here silently discarded an otherwise valid extraction batch. A plain fence
+ * whose content began with the literal word "json" can't be confused with a
+ * labeled fence, because valid JSON payloads here always start with [ or {.
+ * Returns null on no fence or invalid JSON — callers decide whether to
+ * re-ask or surface "could not parse" (see askMindForJson below).
  * @param {string} text
  * @returns {unknown | null}
  */
 export function parseFencedJson(text) {
   if (!text) return null;
-  const match = text.match(/```(?:json)?\s*\n([\s\S]*?)\n?```/i);
+  const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   const candidate = match ? match[1] : text.trim();
   try {
     return JSON.parse(candidate);

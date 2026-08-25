@@ -67,10 +67,18 @@ export class MindClient {
 
   /** @private */
   async _askOnce(messageText, opts) {
+    // Anchor the reply search to the newest message that exists BEFORE this
+    // send. Without this cursor, the lib's isReplyEvent accepts ANY Mind
+    // message ever sent on the alias, so a back-to-back sequential ask can
+    // "receive" the previous question's answer (or a days-old message) as
+    // its reply — observed live 2026-08-25: video 1's extraction got video
+    // 2's answer from 2 seconds before its own send. The Round 2 lock only
+    // prevents concurrent asks; this closes the sequential variant.
+    let afterFingerprint = await this.raw.getLatestHistoryFingerprint(this.alias);
+
     await this.raw.sendMessage({ alias: this.alias, messageText });
 
     const deadline = Date.now() + (opts.timeoutMs ?? 180_000);
-    let afterFingerprint;
 
     for (;;) {
       const remaining = deadline - Date.now();

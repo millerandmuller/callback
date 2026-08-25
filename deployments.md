@@ -19,7 +19,7 @@ DoraHacks submission form fields and the S4 writeup.
 - Mind wallet address: 0x3C88f1c398C6a7cA2Ae9dCf804Bb34790E7f088b
 - `MINDS_BUILDER_API_KEY` set in `.env`: DONE 2026-08-22 21:00 CDT (key name `callback-build`, 90 days; `minds doctor` all checks ok; CLI 0.1.3). `MINDS_MIND_ID` set.
 - Telegram linked: @CallbackMind_bot (display name CallbackMind), created 2026-08-22 ~20:48 CDT via Minds' `tg://newbot?manager=hellomindsbot` flow from the iPhone (no Telegram app on the Mac, so the desktop button does nothing). First Telegram reply at 20:50 referenced the earlier email greeting unprompted: cross-channel memory confirmed on day 0.
-- Cognition balance: 183.03 cognitions at creation (2026-08-22), 181.69 after first chats; profile shows "≈119 days left at recent usage". US$25 top-up: OPEN (decide after M1 usage data; low-balance warning comes from the Mind itself)
+- Cognition balance: 183.03 cognitions at creation (2026-08-22), 181.69 after first chats; profile shows "≈119 days left at recent usage". US$25 top-up: DONE 2026-08-25 ~09:05 CDT via Stripe checkout from the Mind's Top Up menu (one-time, transaction ref `cs_live_a1AfTfW5svNtZICYtZPKGecdtk5CCcyMGhv1BPUQCYkIym5D211nOhPfsn`). Balance after top-up: **1,064.25 cognitions** (`getCognitionBalance`), i.e. ~1,000 added to the ~64 that remained — the Mind's Aug 23 "down to a sliver" warnings were accurate. Usage to date: Aug 23: 185.2 · Aug 24: 64.3 · Aug 25 (to ~09:00): 63.1. At the Day-1 heavy rate (~185/day) the new balance covers ~5 rehearsal-grade days; comfortably past the Thu submission. Note: the app's "runway" chip is unreliable (flapped between "<1 day" and "8.5 days" pre-top-up, and lagged after payment) — trust `getCognitionBalance`.
 - Cognition boost applied for: DONE (DoraHacks registration form submitted 2026-08-22 with Mind ID, email, wallet; track Audience growth & community engagement)
 - `minds doctor` / `MindClient.doctor()` output: DONE 2026-08-22 21:02 CDT (F0 acceptance)
 
@@ -142,6 +142,49 @@ walkthrough" for how to run each one.
 API-key uploads playlist now returns the video (the earlier 404 playlistNotFound was the zero-uploads case, as recorded).
 `npm run verify:t01`: First run 1 videos, 0 new comments, comments-off []; Second run 1 videos, 0 new comments → T-01 PASS (re-run added zero duplicates). Re-run after tester comments land to confirm idempotency with real rows.
 2026-08-23 07:08 CDT — after video 2 (D8ZAgrpYRcM) published: First run 2 videos, 0 new comments, comments-off []; Second run 2 videos, 0 new comments → T-01 PASS. Still 0 comments: the Sunday tester comments have not landed yet.
+2026-08-25 ~08:15 CDT — with real tester comments: First run 2 videos, 13 new comments; Second run 0 new → PASS. Re-run after the Tuesday top-up (T7/T8/T10) and after pruning T10's two deleted duplicates from the DB: 17 comments, 0 new on re-run → PASS. DB mirrors YouTube exactly.
+```
+
+### M1 first live extraction (F2) — 2026-08-25, Meta-Prompter session
+
+```
+Seed state: 17 of 19 planned comments live (T9's c2 and T6's cuff c5 unsent; T4's Monday
+non-ask was posted from the persona channel's own account, excluded via is_owner_reply).
+Ledger result (after fixes below): 16 non-owner comments classified; 12 open asks from
+9 distinct people; T1 merged to ONE row, first 2026-08-23 / last 2026-08-24, 2 events;
+T4 Sunday filtered as non-ask; T10 flagged abusive, never an ask; T3's "Same here, moth
+holes. Following." reply classified NON-ask by the Mind (defensible; prompt-tuning
+question, noted in seed/testers.md ground truth).
+
+REAL MIND EXTRACTION LATENCY (the pre-warm rule's justification):
+- video 2 batch, 6 comments: 3m46s ask -> answer (13:35:33 -> 13:39:19 UTC)
+- video 1 batch, 10 comments: ~10m10s from first ask (13:39:21 -> 13:49:31 UTC);
+  a duplicate stricter re-ask at 13:42:23 muddies attribution. Far above the brief's
+  original 90s target, consistent with Round 2's 4-5 min/video finding. The
+  unlisted-first flow absorbs this for Beat 3; the E5 dry run MUST be pre-warmed.
+
+THREE BUGS FOUND LIVE AND FIXED (uncommitted; tests 59/59):
+1. parse.js parseFencedJson required a newline after the fence opener; the Builder
+   API's HTML wrapping can collapse the reply to "```json[{...}]```" on one line, so
+   a valid extraction was discarded. Regex now tolerates a missing newline.
+2. client.js _askOnce called waitForReply with no initial afterFingerprint; the lib
+   matches ANY prior Mind message then (sequential stale-reply: video 1's ask
+   "received" video 2's answer from 2s before its own send; an Aug 23 credit-warning
+   message was also matched as a reply). Now anchors with getLatestHistoryFingerprint
+   before every send. (Round 2's lock only covered the concurrent variant.)
+3. ledger.js bumpAsk only raised last_asked_at; a batch arriving out of chronological
+   order left T1's first_asked_at a day late (Beat 3 shows "asked Sun - again Mon").
+   bumpAsk now maintains both bounds; live rows recomputed from ask_events.
+
+Platform findings: the Mind's reply wrapping varies per message — backtick fence
+without newline (13:39) AND <pre><code class="language-json"> (13:49) observed within
+10 minutes; parse handles both. Both answers were salvaged from conversation history
+and merged at ZERO extra cognition cost.
+
+Cognition usage (getCognitionUsage): Aug 23: 185.2, Aug 24: 64.3, Aug 25 so far: 63.1
+(~313 total). The Mind warned twice on Aug 23 that credits are "down to a sliver".
+Top-up decision (US$25) is now timely — before the Tue-evening Sunday-brief trigger
+and Wed rehearsal.
 ```
 
 ### T-02 (F6 reply.parentId)
