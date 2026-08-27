@@ -187,6 +187,53 @@ Top-up decision (US$25) is now timely — before the Tue-evening Sunday-brief tr
 and Wed rehearsal.
 ```
 
+### M2 F3 wiring + memory-scoping fix — 2026-08-27 evening, Meta-Prompter session (endgame)
+
+```
+F3 WIRED: scripts/trigger/sunday-brief.js (npm run brief / npm run brief:install);
+both sundayBrief.js prompts now carry an identical channel-scope sentence
+("Count only people who commented on Mei's own YouTube channel 'Mei makes things';
+ignore every asker you remember from any other channel or creator."), per the
+2026-08-25 contamination finding (topic/channel-scoped questions stay clean,
+unscoped ones leak the Aug 23 test channel).
+
+FIRST SCOPED BRIEF RUN (22:45:14Z trigger, reply 22:47:06Z, 1m52s): the Mind
+answered honestly that it has ZERO people filed under "Mei makes things" — it had
+attributed ALL its memory (Mei's Darning/Buttons videos included) to
+@samwitteveenai, because (root cause, fixed): the extraction prompt never named
+the channel, and the Aug 23 dry-run test introduced itself as the OTHER creator's
+Mind ("You are Callback, <channel.title>'s Mind"). extraction.js now always
+speaks as Mei's Mind, names the channel the comments are from, and marks own vs
+READ-ONLY dry-run channels; both call sites (cron.js, dryrun.js) updated.
+
+FOURTH MIND-PATH BUG FOUND LIVE AND FIXED: the lib's waitForReply afterFingerprint
+matching is INCLUSIVE — a correction ask() at 22:49:06Z instantly "received" the
+22:47:06Z reply (the anchor message itself) as its answer. client.js now rejects
+any reply whose fingerprint is not strictly newer than the pre-send anchor
+(fingerprint format: <epoch-ms-zero-padded>_<uuid>, so length-then-lex compare
+orders correctly). Regression test added; suite 64/64.
+
+Memory re-attribution message sent 22:49:06Z ("your Buttons and Darning videos
+belong to Mei makes things; keep the AI/ML dry-run askers separate").
+
+OUTCOME (confirmed ~23:35Z, reply to the second scoped trigger): the Mind
+acknowledged — "Correction logged. Buttons (0IF_iEFkRE8) and Darning
+(D8ZAgrpYRcM) belong to Mei's 'Mei makes things' channel … The five AI/ML
+videos stay separate as the dry-run test channel - never counted as Mei's
+viewers." It then named ONLY Mei's people (11 listed: Chris-l3e2m, Adnap68,
+chrismuller7541, djfiya, 3rdAILLC, AndrewRivera-q2x, scienceexpertsai,
+BrianKnight-s9l, chrisappsolute4396, ShameenMiller, AndreaGoslowsky — the
+non-ask T4 and abusive T10 correctly remembered as people, not asks) and
+delivered a channel-clean three-line demand brief: (1) tough-fabric mending
+(chrismuller7541 ×2, 3rdAILLC, Adnap68), (2) moth damage (ShameenMiller,
+AndreaGoslowsky, chrisappsolute4396), (3) technique/thread (Adnap68 shank,
+Chris-l3e2m machine, AndrewRivera-q2x knotting, djfiya thread+wax). ZERO
+leakage from the other channel. Note for rehearsal: the Mind's line format is
+thematic rather than the strict "top topic count / repeats / older-than-2-
+weeks" shape — decide at recording whether to re-trigger for the strict shape
+or show this richer one (both honest, both ledger-true).
+```
+
 ### T-02 (F6 reply.parentId)
 ```
 OPEN
