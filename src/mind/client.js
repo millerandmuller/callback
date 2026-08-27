@@ -2,6 +2,21 @@ import { createMindsClient } from '@animocabrands/minds-client-lib';
 import { config, requireEnv } from '../config.js';
 import { stripHtml, isInterimAck } from './parse.js';
 
+const defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * True when fingerprint `a` is not newer than `b`. The platform's
+ * fingerprints are zero-padded numeric strings ("000178787082"), so
+ * length-then-lexicographic order equals numeric order; the length branch
+ * also keeps unpadded numeric strings correct.
+ */
+function fingerprintNotAfter(a, b) {
+  a = String(a);
+  b = String(b);
+  if (a.length !== b.length) return a.length < b.length;
+  return a <= b;
+}
+
 /**
  * Thin wrapper around @animocabrands/minds-client-lib scoped to the one
  * conversation alias ('callback-main', Section 13) so the Mind's context
@@ -91,6 +106,22 @@ export class MindClient {
         afterFingerprint,
       });
       if (outcome.timedOut) return { timedOut: true };
+
+      // The lib's afterFingerprint matching is INCLUSIVE: it can hand back
+      // the anchor message itself — observed live 2026-08-27, when ask()
+      // instantly "received" the previous question's answer despite the
+      // pre-send anchor. Anything not strictly newer than the anchor is
+      // never this call's reply; pause briefly (an instantly-returning
+      // stale match would otherwise busy-spin) and wait for newer.
+      const replyFingerprint = outcome.reply?.fingerprint;
+      if (
+        afterFingerprint != null &&
+        replyFingerprint != null &&
+        fingerprintNotAfter(replyFingerprint, afterFingerprint)
+      ) {
+        await (opts.sleep ?? defaultSleep)(2000);
+        continue;
+      }
 
       const text = stripHtml(outcome.reply.messageText ?? '');
       // A message that's an interim ack, OR empty/whitespace-only once

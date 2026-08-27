@@ -201,3 +201,26 @@ test('ask() anchors the reply search past messages that existed before the send 
   assert.equal(result.timedOut, false);
   assert.equal(result.text, '```json[{"answerTo":"this question"}]```');
 });
+
+test('ask() rejects a reply not strictly newer than the pre-send anchor (live 2026-08-27: inclusive afterFingerprint matching returned the anchor message itself)', async () => {
+  const events = [
+    // The lib hands back the anchor message itself first (inclusive match).
+    { messageText: '<p>Honest answer first: stale previous reply.</p>', fingerprint: '000178787082' },
+    { messageText: '<p>Confirmed: 9 people from Mei makes things.</p>', fingerprint: '000178787095' },
+  ];
+  let call = 0;
+  const fakeRaw = {
+    async getLatestHistoryFingerprint() { return '000178787082'; },
+    async sendMessage() { return {}; },
+    async waitForReply() {
+      const reply = events[call];
+      call += 1;
+      return { timedOut: false, reply };
+    },
+  };
+  const mind = new MindClient(fakeRaw);
+  const result = await mind.ask('correction message', { sleep: async () => {} });
+  assert.equal(call, 2, 'the anchor-fingerprint reply must be skipped, not returned');
+  assert.equal(result.timedOut, false);
+  assert.equal(result.text, 'Confirmed: 9 people from Mei makes things.');
+});
