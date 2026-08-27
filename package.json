@@ -12,6 +12,8 @@
     "start": "node src/index.js",
     "test": "node --test",
     "check-env": "node scripts/setup/check-env.js",
+    "brief": "node scripts/trigger/sunday-brief.js",
+    "brief:install": "node scripts/trigger/sunday-brief.js --install",
     "verify:t01": "node scripts/verify/t01-harvest-idempotent.js",
     "verify:t02": "node scripts/verify/t02-posting-parentid.js",
     "verify:t03": "node scripts/verify/t03-order-proof.js",

@@ -1,3 +1,4 @@
+import { config } from '../config.js';
 import { ensureNamespace } from '../db/index.js';
 import { resolveChannel } from '../youtube/client.js';
 import { harvest } from '../harvest/harvest.js';
@@ -36,7 +37,9 @@ export async function runDryRun(db, ytRead, mind, { handleOrChannelId, videoCoun
       const { buildExtractionPrompt } = await import('../prompts/extraction.js');
       const { askMindForJson } = await import('../mind/parse.js');
       const prompt = buildExtractionPrompt({
-        creatorName: channel.title,
+        creatorName: config.creator.displayName,
+        channelTitle: channel.title,
+        isOwnChannel: false,
         videoTitle: video?.title ?? videoId,
         videoId,
         comments,

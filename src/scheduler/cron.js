@@ -39,6 +39,8 @@ async function runHarvestCycle(db, ytRead, mind) {
       const video = db.prepare(`SELECT title FROM videos WHERE id = ? AND namespace = 'own'`).get(videoId);
       const prompt = buildExtractionPrompt({
         creatorName: config.creator.displayName,
+        channelTitle: config.creator.channelTitle,
+        isOwnChannel: true,
         videoTitle: video?.title ?? videoId,
         videoId,
         comments,
