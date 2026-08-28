@@ -1,10 +1,15 @@
 import { layout, esc } from './layout.js';
 
-function replyPair(reply) {
+function replyPair(reply, batchId) {
   const pointer = reply.timestampPointer ? ` <em>(${esc(reply.timestampPointer)})</em>` : '';
+  // Form actions must be absolute: a relative action ("strike/1") resolves
+  // against the page URL /approve/<batchId> to /approve/strike/1 — the
+  // browser drops the batch id segment — and 404s. Found live at the first
+  // real tap; the route tests POST absolute paths directly, so only a
+  // browser ever exercises this resolution.
   const skipButton =
     reply.status === 'drafted'
-      ? `<form class="inline" method="post" action="strike/${reply.replyId}"><button class="skip" type="submit">skip</button></form>`
+      ? `<form class="inline" method="post" action="/approve/${batchId}/strike/${reply.replyId}"><button class="skip" type="submit">skip</button></form>`
       : `<span class="reply-status">${esc(reply.status)}</span>`;
 
   return `<div class="reply-pair">
@@ -34,7 +39,7 @@ export function renderApprovePage({ batch, replies, waitingForPublic = false }) 
 
   let statusLine;
   if (isPending) {
-    statusLine = `<form method="post" action="approve"><button type="submit">Call back ${draftedOrApproved} people</button></form>`;
+    statusLine = `<form method="post" action="/approve/${batch.id}/approve"><button type="submit">Call back ${draftedOrApproved} people</button></form>`;
   } else if (waitingForPublic) {
     statusLine = `<p class="reply-status">Waiting for the video to go public.</p>`;
   } else {
@@ -43,7 +48,7 @@ export function renderApprovePage({ batch, replies, waitingForPublic = false }) 
 
   const body = `
     <h1 class="approval-header">Callback answers ${draftedOrApproved} open ask${draftedOrApproved === 1 ? '' : 's'}. Nothing posts until you tap.</h1>
-    ${replies.map(replyPair).join('')}
+    ${replies.map((r) => replyPair(r, batch.id)).join('')}
     ${statusLine}
   `;
   return layout({ title: 'Approve', body, head: waitingForPublic ? '<meta http-equiv="refresh" content="30">' : '' });

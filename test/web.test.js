@@ -57,6 +57,18 @@ test('/approve/:batchId approve flow: nothing posts, one tap approves, struck ro
   const getHtml = await getRes.text();
   assert.match(getHtml, /Nothing posts until you tap/);
   assert.match(getHtml, /Call back 1 people/);
+  // Form actions must be ABSOLUTE paths carrying the batch id: a relative
+  // action ("approve") resolves in the browser against /approve/<batchId> to
+  // /approve/approve and 404s — found live at the first real tap. This app
+  // .request() call bypasses browser URL resolution, so assert on the HTML.
+  assert.ok(
+    getHtml.includes(`action="/approve/${matched.batchId}/approve"`),
+    'approve form action must be absolute and include the batch id'
+  );
+  assert.ok(
+    getHtml.includes(`action="/approve/${matched.batchId}/strike/`),
+    'strike form actions must be absolute and include the batch id'
+  );
 
   const approveRes = await app.request(`/approve/${matched.batchId}/approve`, { method: 'POST' });
   assert.equal(approveRes.status, 302);
