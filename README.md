@@ -131,9 +131,9 @@ source for the DoraHacks submission form and the S4 writeup.
 
 ## What's real vs. curated
 
-- `[ECHT]` (real): harvest, ledger merge, Sunday brief, match+draft, approval,
+- Real: harvest, ledger merge, Sunday brief, match+draft, approval,
   posting, quota ledger, dry run, the Mind's memory.
-- `[GEMOCKT/KURATIERT]` (curated): the persona test channel's seed comments
+- Curated: the persona test channel's seed comments
   (S1) — real testers, real questions, deliberately gathered during the
   build week rather than organic.
 
@@ -151,7 +151,7 @@ source for the DoraHacks submission form and the S4 writeup.
   genuinely unlisted/private video ("Waiting for the video to go public")
   and the posting-poll cron retries it indefinitely with no cap or visible
   error. Not reachable on the demo path (the answering video is the team's
-  own scripted upload on a channel they control) — adversarial find, Round 3.
+  own scripted upload on a channel they control).
 
 ## License
 
