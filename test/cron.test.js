@@ -141,3 +141,31 @@ test('F4: a new video with zero open asks produces no batch', async () => {
   const batch = db.prepare(`SELECT * FROM batches WHERE video_id = 'v3'`).get();
   assert.equal(batch, undefined);
 });
+
+test('F4: a successfully handled upload is recorded as known — the next poll tick must NOT re-draft it (live 2026-08-27: three identical batches, ~8 min of Mind time each)', async () => {
+  const db = openDb(':memory:');
+  const [ask] = seedOpenAsk(db);
+  let mindCalls = 0;
+  const mind = {
+    async ask() {
+      mindCalls += 1;
+      return { timedOut: false, text: `\`\`\`json\n[{"askId":${ask.askId},"askerChannelId":"UCkai","replyText":"Kai, here it is.","timestamp":null}]\n\`\`\`` };
+    },
+  };
+  const oauthClient = { label: 'OAuth write client' };
+  const listRecentVideos = async () => [{ videoId: 'v2', title: 'How I light the desk', publishedAt: '2026-08-24T10:00:00Z' }];
+  const getVideoMeta = async (yt, videoId) => ({
+    videoId, title: 'How I light the desk', description: '', publishedAt: '2026-08-24T10:00:00Z', captionsAvailable: false, privacyStatus: 'unlisted',
+  });
+
+  const first = await runUploadPollCycle(db, oauthClient, mind, { listRecentVideos, getVideoMeta });
+  assert.equal(first.newVideo, true);
+  assert.equal(first.matched, true);
+  assert.equal(mindCalls, 1);
+
+  const second = await runUploadPollCycle(db, oauthClient, mind, { listRecentVideos, getVideoMeta });
+  assert.equal(second.newVideo, false, 'the second tick must see the video as already known');
+  assert.equal(mindCalls, 1, 'the Mind must not be asked to draft the same video twice');
+  const batches = db.prepare(`SELECT COUNT(*) n FROM batches WHERE video_id = 'v2'`).get();
+  assert.equal(batches.n, 1, 'exactly one batch may exist for the video');
+});

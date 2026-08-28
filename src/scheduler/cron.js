@@ -79,7 +79,23 @@ async function runUploadPollCycle(db, ytWrite, mind, { listRecentVideos, getVide
   if (known) return { newVideo: false };
 
   const meta = await getVideoMeta(ytWrite, latest.videoId);
-  if (getOpenAsks(db, 'own').length === 0) return { newVideo: true, matched: false, reason: 'no open asks' };
+
+  // Record the video as known once it has been handled, or the `known` check
+  // above never fires: nothing else in this path inserts into `videos` (only
+  // the harvest does, and it lags a new upload by up to 30 minutes), so every
+  // 10-minute tick re-detected the same video and re-drafted a whole
+  // duplicate batch — observed live 2026-08-27: three identical 5-reply
+  // batches, ~8 minutes of Mind time each. Inserted only after matchAndDraft
+  // succeeds (or there is nothing to draft), so a transient Mind failure is
+  // still retried on the next tick.
+  const markKnown = db.prepare(
+    `INSERT OR IGNORE INTO videos (id, namespace, title, published_at) VALUES (?, 'own', ?, ?)`
+  );
+
+  if (getOpenAsks(db, 'own').length === 0) {
+    markKnown.run(latest.videoId, meta?.title ?? latest.title, meta?.publishedAt ?? latest.publishedAt ?? null);
+    return { newVideo: true, matched: false, reason: 'no open asks' };
+  }
 
   const matched = await matchAndDraft(db, mind, {
     namespace: 'own',
@@ -89,6 +105,9 @@ async function runUploadPollCycle(db, ytWrite, mind, { listRecentVideos, getVide
     captionsText: null, // captions text fetch is a stretch beyond F0-F8's committed scope; see README "after-hackathon"
     creatorName: config.creator.displayName,
   });
+  if (matched.ok) {
+    markKnown.run(latest.videoId, meta?.title ?? latest.title, meta?.publishedAt ?? latest.publishedAt ?? null);
+  }
   return { newVideo: true, matched: matched.ok, ...matched };
 }
 
