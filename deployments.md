@@ -367,3 +367,19 @@ the steward's Telegram?"
 ## Remaining manual steps
 
 Everything marked OPEN above. See `SETUP.md` for the exact order.
+
+### M5 moth run — second live loop closed, 2026-08-28 morning
+
+```
+Batch 275069b532ae4cff13c2b5effc1f1971 (video GhMMIvdkgXU "Moth holes in
+cashmere", drafts salvaged from the Mind's own answer at zero extra cost after
+a queue overload — see the build log). Approved and posted 2026-08-28 morning;
+run order this time: approve -> "Waiting for the video to go public" -> flip
+public -> replies landed. Both replies NAME the answering video (prompt rule
+added after run 1).
+T-02 PASS: parentId UgxCBblo7cJxTMCiC814AaABAg (ShameenMiller) and
+UgzOhKHWrjBW9XfBpWB4AaABAg (AndreaGoslowsky) both equal the askers' comments.
+T-03 PASS x2: ask < video < reply on both; never-twice held per (person,
+topic) — AndreaGoslowsky correctly holds TWO answered asks on two different
+topics (coat buttons, moth pinpricks). Ledger: 7 answered, 5 open.
+```
