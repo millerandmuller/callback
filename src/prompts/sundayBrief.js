@@ -7,7 +7,7 @@
  * Both prompts are scoped to the creator's own channel: the shared
  * `callback-main` conversation has seen other channels' comments (the Aug 23
  * test run), and unscoped memory questions leak those askers into the brief,
- * while scoped questions come back clean (DECISION_LOG 2026-08-25). The scope
+ * while scoped questions come back clean (found live 2026-08-25). The scope
  * sentence is load-bearing — do not remove it.
  */
 

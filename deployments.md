@@ -6,10 +6,9 @@ DoraHacks submission form fields and the S4 writeup.
 
 ## Repository
 
-- URL: https://github.com/fiya-chris-and-AI/callback
-- Visibility: PRIVATE (team decision, confirmed via `gh repo view`), MIT license (auto-detected from the committed `LICENSE` file)
-- Pushed: 2026-08-22, 6 commits, `main` branch
-- **Must be switched to public before the Thursday 2026-08-27 22:00 CDT submission deadline** — DoraHacks requires a public code repository. Not yet done. Track this as an open item until flipped.
+- Submission URL: https://github.com/millerandmuller/callback (pushed 2026-08-28 with full history)
+- Visibility: starts PRIVATE (team decision); MIT license (auto-detected from the committed `LICENSE` file)
+- **Must be switched to public before the 2026-08-28 10:59 CDT submission deadline** — DoraHacks requires a public code repository. The flip is done by hand in the GitHub repo settings. Track this as an open item until flipped.
 
 ## Minds
 
@@ -30,7 +29,7 @@ minds cognition balance: 170.75
 MindClient.doctor(): roundTrip.timedOut=false · messageText "<p>ok</p>" · senderEmail callback@hellominds.ai · alias callback-main · conversationType 5 · senderType 0 · createdAt 2026-08-23T02:02:24Z · elapsed 24,655 ms
 ```
 Build consequence: `messageText` is HTML-wrapped (`<p>…</p>`); strip tags / decode entities before locating the fenced JSON block. Round-trip latency for a trivial turn: ~25 s; budget 60-120 s for extraction turns, 180 s timeout stays.
-FIXED (build terminal): `stripHtml()` in `src/mind/parse.js`, applied to every `MindClient.ask()` reply.
+FIXED (build session): `stripHtml()` in `src/mind/parse.js`, applied to every `MindClient.ask()` reply.
 
 ### DNA message (identity set 2026-08-22 20:57 CDT, app.hellominds.ai, thread "You are Callback...")
 Sent: "You are Callback, a Mind for a YouTube creator. Your job: read comments I send you, remember every person who asks a question (name, what they asked, when), merge repeat askers, tell me on Sundays what people most want next, and when I publish a video that answers them, draft one short personal reply per asker in my own voice. You never post anything yourself; I approve every batch. Plain tone, no emoji, no links, no hashtags. Confirm what you understood in three lines." (a few characters were dropped by the web input; meaning intact)
@@ -41,15 +40,15 @@ Reply sequence (total 1:52): status chips Thinking -> Still thinking -> Evaluati
 > Send the first comment whenever you are ready and I will start the log.
 
 Build consequence (F2/F4, src/mind): the Mind can answer an instruction with an interim acknowledgment ("I'll notify you...") followed by the real answer as a SECOND message. `waitForReply` must not accept an interim ack as the final reply: keep listening until a message containing the requested fenced JSON block arrives (or the 180 s timeout), and treat "I'll notify you" / "I'll get back to you" style messages as non-final. Identity-setting turns took ~2 min; structured extraction turns should be timed at M1 before the demo script relies on them.
-FIXED (build terminal): `MindClient.ask()` in `src/mind/client.js` now loops past any reply matching `isInterimAck()` (`src/mind/parse.js`), re-calling `waitForReply` with `afterFingerprint` set to the ack's own fingerprint, within the same overall timeout. Unit-tested with a fake event stream sending the ack first and the real reply second (`test/mind-client.test.js`).
+FIXED (build session): `MindClient.ask()` in `src/mind/client.js` now loops past any reply matching `isInterimAck()` (`src/mind/parse.js`), re-calling `waitForReply` with `afterFingerprint` set to the ack's own fingerprint, within the same overall timeout. Unit-tested with a fake event stream sending the ack first and the real reply second (`test/mind-client.test.js`).
 
-### Round 2 Examine findings (build terminal, 2026-08-22)
+### Round 2 adversarial review findings (build session, 2026-08-22)
 
 - **stripHtml angle-bracket bug (adversarial find):** the tag-stripping regex treated any `<...>` span as a tag, silently deleting real reply content containing two literal angle brackets (e.g. "ISO < 800 and f-stop > 2.8"). FIXED: regex now requires a letter, `/`, or `!` right after `<`. Live round trip confirming the fix (asked the Mind to echo `ISO < 800 and f-stop > 2.8` verbatim): the reply that came back on this attempt did not actually answer the question (see the concurrency finding below for why) — retry after the concurrency fix, or during M1, before fully trusting this against a live reply containing real angle brackets.
 - **Empty-reply-as-final bug:** `isInterimAck('')` is correctly `false`, but `ask()` was returning a blank post-strip reply as final anyway. FIXED: `ask()` now waits past blank replies too.
-- **Concurrency cross-talk (live-discovered, serious):** while live-testing the angle-bracket fix, a direct raw-client call returned a different concurrent caller's reply instead of its own — confirmed via `getHistory()` timestamps that a Round-2-examiner subagent's own dry-run extraction call was mid-flight on the same `callback-main` conversation at the same moment. Root cause: `waitForReply` isn't scoped strictly enough to guarantee it returns the calling request's own reply when two calls overlap on one conversation. Reachable in production whenever the harvest (30 min) and upload-poll (10 min) crons fire close enough together — Beat 3/4 territory, could attach the wrong drafted reply to a real live comment. FIXED: `MindClient` now serializes every `ask()` call against a per-instance queue; regression-tested (`test/mind-client.test.js`) by simulating exactly this overlap.
+- **Concurrency cross-talk (live-discovered, serious):** while live-testing the angle-bracket fix, a direct raw-client call returned a different concurrent caller's reply instead of its own — confirmed via `getHistory()` timestamps that a concurrent review process's own dry-run extraction call was mid-flight on the same `callback-main` conversation at the same moment. Root cause: `waitForReply` isn't scoped strictly enough to guarantee it returns the calling request's own reply when two calls overlap on one conversation. Reachable in production whenever the harvest (30 min) and upload-poll (10 min) crons fire close enough together — Beat 3/4 territory, could attach the wrong drafted reply to a real live comment. FIXED: `MindClient` now serializes every `ask()` call against a per-instance queue; regression-tested (`test/mind-client.test.js`) by simulating exactly this overlap.
 - **E5 timing (demo-strategy item, not a bug):** a real dry run against a public channel with realistic comment volume took 4-5 minutes for a single video's classification, far past E5's "under 90s" acceptance criterion. The mechanism itself was correct (real harvest, real on-topic extraction, no ack leakage, correct HTML stripping) — the Mind's live classification latency is just much higher than the brief assumed. Mitigation already built in for free: `harvest()` is idempotent and only unclassified comments get sent to the Mind, so a second dry run of an already-seen channel with nothing new is near-instant. **Action: pre-warm the chosen dry-run channel during rehearsal, well before recording** (now noted in `SETUP.md` section 7 and `README.md`'s verify walkthrough).
-- **Corrected finding:** a Round-2 examiner reported the runtime `data/callback.sqlite` vanishing from disk mid-session with an unidentified cause. Traced to a build-terminal cleanup command (`rm -f data/callback.sqlite ...`) colliding with that same examiner's own background test server, which still had the file open (delete-while-open, not an external actor). No tracked file affected; no real seed data existed yet to lose. Lesson: don't `rm` the runtime DB path without checking for a running server first.
+- **Corrected finding:** a round-2 review pass reported the runtime `data/callback.sqlite` vanishing from disk mid-session with an unidentified cause. Traced to a cleanup command (`rm -f data/callback.sqlite ...`) colliding with a concurrently running background test server, which still had the file open (delete-while-open, not an external actor). No tracked file affected; no real seed data existed yet to lose. Lesson: don't `rm` the runtime DB path without checking for a running server first.
 
 ## YouTube
 
@@ -60,7 +59,7 @@ FIXED (build terminal): `MindClient.ask()` in `src/mind/client.js` now loops pas
 - Persona test channel id (`YOUTUBE_TEST_CHANNEL_ID`): UCwgJK_Fm5G_xxf4P6WoOMKw (uploads playlist UUwgJK_Fm5G_xxf4P6WoOMKw); video 1 = 0IF_iEFkRE8 published 2026-08-23 07:03 CDT; video 2 = D8ZAgrpYRcM "Darn a hole in a jumper without it puckering" (4:38) published public 2026-08-23 07:06 CDT (12:06:40Z) with the same settings as video 1 (not made for kids, AI-use disclosure No, language English, comments On, moderation None, anyone; NotebookLM disclosed in the description); verified via videos.list privacyStatus=public and the API-key uploads playlist (2 items)
 - Dry-run channel (see `seed/dryrun-channel.md`): CHOSEN 2026-08-23 07:40 CDT — @roxannerichardson (UCSPrWB2SZXVCj2-PH-36xBA, 166k subs, knitting/re-knitting, uploads every 2 weeks, 242 comments on the last 5 uploads, 18 unanswered questions older than 14 days); runner-up @xiaoxiaoyarn. Shortlist method: 3 `search.list` queries (300 units) + 1-unit reads over 16 band channels; `resolveChannel('@roxannerichardson')` verified. Pre-warm (~25 min of Mind time) still OPEN: first run during rehearsal 1 on Wed, never first on camera.
 
-### Round 3 — unlisted-first flow implemented (build terminal, 2026-08-23)
+### Round 3 — unlisted-first flow implemented (build session, 2026-08-23)
 
 - **F4:** the own-channel upload poll (`runUploadPollCycle`) now polls
   `listRecentVideos` with the same OAuth-authenticated write client used for
@@ -83,12 +82,12 @@ FIXED (build terminal): `MindClient.ask()` in `src/mind/client.js` now loops pas
 - These two flows (video 3 unlisted → drafted → approved → set public →
   posted within the 20s throttle) still need a real M1 upload to exercise
   end to end — tracked as the same M1 milestone as before, unchanged by this
-  round. See `revision_log.md` (Round 3) for the full commit-by-commit
+  round. See the round 3 commits (`b59c4fb`..`f34219d`) for the full commit-by-commit
   breakdown.
 
-### Round 3 — `/academy-round` Examine + Revise (build terminal, 2026-08-23)
+### Round 3 — review + fixes (build session, 2026-08-23)
 
-- Four fresh Examiner subagents reviewed the above. Baseline and features PASS
+- Four independent review passes (baseline, features, demo, adversarial) covered the above. Baseline and features PASS
   (55/55 tests after this sub-phase's fixes; live-verified `privacyStatus`
   against the real YouTube API with both credentials, including the exact
   OAuth client F6 uses). Demo: `NOT STAGE-READY` (same M1 blocker as Round 2,
@@ -103,7 +102,7 @@ FIXED (build terminal): `MindClient.ask()` in `src/mind/client.js` now loops pas
   playlist actually returns an unlisted video to the OAuth-authenticated
   owner — F4's core detection mechanism assumes yes, never verified against
   a real unlisted video. See `SETUP.md` section 7 for the exact 5-minute
-  check to run first, and `DECISION_LOG.md` (2026-08-23) for the full
+  check to run first, and the build log (2026-08-23) for the full
   reasoning on why this wasn't resolved by a speculative rewrite this
   session.
 - `VERDICT: FAIL` (forced by `DEMO-VERDICT: NOT STAGE-READY`, same as every
@@ -145,7 +144,7 @@ API-key uploads playlist now returns the video (the earlier 404 playlistNotFound
 2026-08-25 ~08:15 CDT — with real tester comments: First run 2 videos, 13 new comments; Second run 0 new → PASS. Re-run after the Tuesday top-up (T7/T8/T10) and after pruning T10's two deleted duplicates from the DB: 17 comments, 0 new on re-run → PASS. DB mirrors YouTube exactly.
 ```
 
-### M1 first live extraction (F2) — 2026-08-25, Meta-Prompter session
+### M1 first live extraction (F2) — 2026-08-25, ops session
 
 ```
 Seed state: 17 of 19 planned comments live (T9's c2 and T6's cuff c5 unsent; T4's Monday
@@ -187,7 +186,7 @@ Top-up decision (US$25) is now timely — before the Tue-evening Sunday-brief tr
 and Wed rehearsal.
 ```
 
-### M2 F3 wiring + memory-scoping fix — 2026-08-27 evening, Meta-Prompter session (endgame)
+### M2 F3 wiring + memory-scoping fix — 2026-08-27 evening, ops session (endgame)
 
 ```
 F3 WIRED: scripts/trigger/sunday-brief.js (npm run brief / npm run brief:install);
@@ -336,7 +335,7 @@ OPEN
 
 ### T-06 (Mind memory query, three consecutive runs)
 ```
-Run 1 (build terminal, 2026-08-22, `npm run verify:t06 -- "lighting"`):
+Run 1 (build session, 2026-08-22, `npm run verify:t06 -- "lighting"`):
 > Who has asked me about lighting? ...
 "I can't answer this honestly, and I won't fake it. No comments have come
 through yet. ... If I made up names and dates to comply with 'answer from

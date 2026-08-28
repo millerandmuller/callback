@@ -1,6 +1,6 @@
 # Dry-run channel (E5)
 
-> Chosen 2026-08-23 07:40 CDT (M1, Meta-Prompter shortlist of 16 channels in the 20k-200k band from three `search.list` queries; measured read-only with the API key). Fixed for the rest of the build so rehearsals and the video see the same data.
+> Chosen 2026-08-23 07:40 CDT (M1, shortlist of 16 channels in the 20k-200k band from three `search.list` queries; measured read-only with the API key). Fixed for the rest of the build so rehearsals and the video see the same data.
 
 **Handle:** @roxannerichardson (Roxanne Richardson)
 **Channel id:** UCSPrWB2SZXVCj2-PH-36xBA (uploads playlist UUSPrWB2SZXVCj2-PH-36xBA)

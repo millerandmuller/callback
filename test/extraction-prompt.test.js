@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildExtractionPrompt } from '../src/prompts/extraction.js';
 
-// Channel-attribution regression tests (DECISION_LOG 2026-08-27): the Aug 23
+// Channel-attribution regression tests (found live 2026-08-27): the Aug 23
 // dry run introduced itself as the OTHER creator's Mind and the Mind filed all
 // askers — Mei's included — under that channel. These pin the framing that
 // keeps the two memories apart.

@@ -38,7 +38,7 @@ still missing.
 ## 2. DoraHacks registration (cognition boost)
 
 1. Submit the Creative Minds Jam #1 registration/submission form (see the
-   event link in `project_brief.md` Section H) using the Mind ID, Mind
+   event page (https://dorahacks.io/hackathon/creativeminds/detail)) using the Mind ID, Mind
    email, and Mind wallet address from step 1, track "Audience growth &
    community engagement". Do this early — confirmed live: this submission
    *is* the cognition-boost request; there is no separate button or flow in
@@ -83,16 +83,14 @@ still missing.
 
 ## 5. Repo
 
-1. This app lives in `callback/` inside the private Academy workspace so the
-   Academy's own strategy documents (jury profiles, hour budgets, the bet)
-   never end up in the submission repo. This directory has its own git
-   history — do NOT push the parent `hackathon-creative-minds` directory.
-2. The GitHub repo for `callback/` (`fiya-chris-and-AI/callback`, MIT
-   license) is currently **private** by team decision, to keep the
-   build-in-progress out of public view while it's unfinished. **DoraHacks
-   requires a public code repository at submission time** — switch this
-   repo to public (or mirror it to a new public one) before the Thursday
-   22:00 CDT submission deadline; track this in `deployments.md`.
+1. This repository is self-contained: the app, its scripts, its tests, and
+   this documentation. Working notes with personal data (tester roster,
+   contact fields) live gitignored under `private/` and `seed/testers.md`.
+2. The submission repo (`millerandmuller/callback`, MIT license) starts
+   **private** by team decision, to keep the build-in-progress out of
+   public view while it's unfinished. **DoraHacks requires a public code
+   repository at submission time** — switch it to public before submitting;
+   track this in `deployments.md`.
 
 ## 6. Testers
 

@@ -6,7 +6,7 @@
  * Channel attribution is load-bearing: the Mind holds one memory across the
  * shared `callback-main` conversation, and the Aug 23 dry-run test introduced
  * itself as the OTHER creator's Mind — after which the Mind filed every asker
- * (Mei's included) under that channel (DECISION_LOG 2026-08-25/27). So the
+ * (Mei's included) under that channel (found live 2026-08-25/27). So the
  * prompt always speaks as Mei's Mind, always names the channel the comments
  * are from, and says explicitly whether that channel is Mei's own.
  * @param {{creatorName: string, channelTitle: string, isOwnChannel: boolean, videoTitle: string, videoId: string, comments: Array<{commentId: string, authorChannelId: string, authorDisplayName: string, text: string, publishedAt: string}>}} args

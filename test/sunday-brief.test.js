@@ -5,7 +5,7 @@ import {
   buildSundayBriefTriggerMessage,
 } from '../src/prompts/sundayBrief.js';
 
-// F3 regression tests for the memory-contamination fix (DECISION_LOG
+// F3 regression tests for the memory-contamination fix (found live
 // 2026-08-25): the shared callback-main conversation remembers other channels'
 // askers, and only channel/topic-scoped prompts come back clean. These tests
 // pin the scope sentence into both prompts so a rewrite can't silently drop it.

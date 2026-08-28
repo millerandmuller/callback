@@ -7,8 +7,8 @@ import { approveBatch } from '../src/approval/approval.js';
 import { postApprovedBatch } from '../src/posting/posting.js';
 import { createApp } from '../src/web/server.js';
 
-// Regression tests for findings from the Round 1 adversarial examiner pass
-// (see examiner_report.md). Each test names the probe it closes.
+// Regression tests for findings from the round 1 adversarial review pass
+// Each test names the probe it closes.
 
 test('Probe 2/3: a malformed extraction item (isAsk=true, no topic) is skipped, not thrown -- surrounding well-formed items still merge', () => {
   const db = openDb(':memory:');

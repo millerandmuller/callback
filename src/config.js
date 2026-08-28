@@ -24,7 +24,7 @@ export const config = {
     displayName: process.env.CREATOR_DISPLAY_NAME || 'Mei',
     // Scopes Mind memory prompts to this channel: the shared conversation has
     // seen other channels' comments (Aug 23 test run), and unscoped questions
-    // leak them (DECISION_LOG 2026-08-25). Topic/channel-scoped ones stay clean.
+    // leak them (found live 2026-08-25). Topic/channel-scoped ones stay clean.
     channelTitle: process.env.CREATOR_CHANNEL_TITLE || 'Mei makes things',
     timezone: process.env.CREATOR_TIMEZONE || 'America/Chicago',
   },

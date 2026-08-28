@@ -117,7 +117,7 @@ source for the DoraHacks submission form and the S4 writeup.
   `waitForReply` cycles are ever in flight at once; a live cross-talk bug
   found during the build (two concurrent calls on `callback-main`
   legitimately receiving each other's replies) is why this exists — see
-  `DECISION_LOG.md`, 2026-08-22.
+  the build log, 2026-08-22.
 - **Measured Mind latency: 4-5 minutes per video of comments**, not
   seconds. A live extraction/classification pass against a real channel's
   comment volume took roughly that long end to end. This is why the
@@ -145,7 +145,7 @@ source for the DoraHacks submission form and the S4 writeup.
 - TikTok comments (no comment endpoint in the public Display API today).
 - Telegram "approve" by message as the *only* approval path (a Skill
   wrapping the approve endpoint is a stretch goal inside F5's hours, gated
-  at day 3 — see `project_brief.md` F5).
+  at day 3).
 - Surfacing a deleted or otherwise inaccessible answering video: right now,
   a batch waiting on such a video looks identical to one waiting on a
   genuinely unlisted/private video ("Waiting for the video to go public")
