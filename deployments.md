@@ -234,9 +234,79 @@ weeks" shape — decide at recording whether to re-trigger for the strict shape
 or show this richer one (both honest, both ledger-true).
 ```
 
+### M5 video 3 + Telegram S6 resolution — 2026-08-27 evening
+
+```
+S6 QUESTION RESOLVED (observed live): a Builder-API-initiated Mind turn does
+NOT push to the steward's Telegram — the 23:35Z scoped brief arrived only in
+the API conversation. A TELEGRAM-INITIATED turn works: Lutfiya messaged
+@CallbackMind_bot at 18:29 CDT with the scoped trigger and received a clean
+three-line Mei-only brief at 18:30 (same three lines as the API run, zero
+cross-channel leakage — the re-attribution HOLDS in a fresh Telegram context).
+Consequence for Beat 3: the Telegram brief shot is recorded as the creator
+messaging the Mind in Telegram (honest, and it is how a creator would use it).
+Rehearsal rule stands: topic/channel-scoped questions only on camera.
+
+VIDEO 3 UPLOADED UNLISTED 2026-08-27 ~18:38 CDT: bAl9F_lRTUQ "Buttons on
+thick fabric: denim, coats, and shank buttons" (4:41). Settings verified in
+Studio: not made for kids; AI use No (NotebookLM named in the description);
+language English; comments On; moderation None (was Basic by default —
+corrected); audience anyone; visibility UNLISTED (confirmed in the content
+list). Description carries chapters 0:00/0:13/0:25/1:33/2:40/3:40 (0:00 Intro
+added — YouTube requires the first chapter at 0:00) and "Made with
+NotebookLM." Channel switch note: Studio opened on the personal channel
+first; the account chooser needed solutions@3rdaillc.com (password entered by
+Lutfiya), then studio.youtube.com/channel/UCwgJK_Fm5G_xxf4P6WoOMKw.
+```
+
+### M3 CLOSED — first end-to-end callback loop, live, 2026-08-27 19:11-19:13 CDT
+
+```
+Batch d5f704de8975a03f0b541f7e1ada0180 (5 replies, drafted 23:41Z while the
+video was still private/unlisted). Approved 00:11:12Z; video already public
+(user flipped before tapping — harmless by design, the posting poll checks
+privacy fresh). Replies posted on the exact 20s throttle:
+00:11:31Z Adnap68 (shank) · 00:11:51Z chrismuller7541 (denim) ·
+00:12:12Z djfiya (thread+wax) · 00:12:33Z 3rdAILLC (wool coat) ·
+00:12:53Z AndreaGoslowsky (overcoat, on video 2).
+Ledger after: 5 asks answered, 7 stay open — matches seed/testers.md ground
+truth ("video 3 calls back 5 people").
+
+TWO BUGS FOUND LIVE AND FIXED (commits 34b8904, 9b862d5, both pushed):
+1. Approval-page 404 on the tap: form actions were relative ("approve"),
+   which the browser resolves against /approve/<batchId> to /approve/approve.
+   Route tests POST absolute paths, so only a real browser ever hit it.
+2. Upload-poll re-drafting loop: the dedup check read the videos table but
+   nothing in the poll path ever inserted into it — every 10-min tick
+   re-detected video 3 and re-drafted a full duplicate batch (~8 min Mind
+   time each; two unposted duplicates deleted from the runtime DB, video
+   marked known, regression test added).
+Also fixed: t03-order-proof.js had an ambiguous-column SQL bug (first real
+run tonight).
+```
+
 ### T-02 (F6 reply.parentId)
 ```
-OPEN
+2026-08-28T00:2xZ — npm run verify:t02 d5f704de8975a03f0b541f7e1ada0180
+PASS  reply UgyCnxv-Ut4zLArJ5t94AaABAg.A_thyalE7H_Aa1YjxjpA_o  parentId=UgyCnxv-Ut4zLArJ5t94AaABAg  expected=UgyCnxv-Ut4zLArJ5t94AaABAg
+PASS  reply UgyhUx-WmftEaIhaspB4AaABAg.A_rRa04YUtpAa1YmUiEB9K  parentId=UgyhUx-WmftEaIhaspB4AaABAg  expected=UgyhUx-WmftEaIhaspB4AaABAg
+PASS  reply UgzXCp--7OdHH7xS-VZ4AaABAg.A_rPI53fj_BAa1Yp-Mzs52  parentId=UgzXCp--7OdHH7xS-VZ4AaABAg  expected=UgzXCp--7OdHH7xS-VZ4AaABAg
+PASS  reply Ugxgi25hIbT155wl8fB4AaABAg.A_rPDnuTxJWAa1YrWoO56I  parentId=Ugxgi25hIbT155wl8fB4AaABAg  expected=Ugxgi25hIbT155wl8fB4AaABAg
+PASS  reply UgwA6I91_v7MH5Q5WeZ4AaABAg.A_wDeNBqUHPAa1Yu2ci_Zm  parentId=UgwA6I91_v7MH5Q5WeZ4AaABAg  expected=UgwA6I91_v7MH5Q5WeZ4AaABAg
+T-02 PASS (all five live against the real API)
+```
+
+### T-03 (order proof: ask < video < reply, never-twice) — PASS ×5
+
+```
+Run for every answered ask (7, 8, 9, 10, 12); one shown in full:
+=== ask 8 (chrismuller7541, the twice-asker) ===
+asker.comment   UgyhUx-WmftEaIhaspB4AaABAg   publishedAt 2026-08-23T16:37:21Z   "How do you do this on denim? The buttons on my jeans keep going."
+video           bAl9F_lRTUQ   publishedAt 2026-08-27T23:30:42Z
+reply           UgyhUx-WmftEaIhaspB4AaABAg.A_rRa04YUtpAa1YmUiEB9K   parentId UgyhUx-WmftEaIhaspB4AaABAg   publishedAt 2026-08-28T00:11:51Z
+order ok: ask < video < reply   never-twice ok: (person 8, Reinforcing jeans buttons on denim) answered once
+T-03 PASS
+(asks 7, 9, 10, 12: same shape, all PASS — ask < video < reply on every one)
 ```
 
 ### T-03 (order proof: ask < video < reply, never-twice)

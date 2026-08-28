@@ -32,7 +32,7 @@ function main() {
   const firstEvent = db
     .prepare(`SELECT comment_id as commentId, occurred_at as occurredAt, quote FROM ask_events WHERE ask_id = ? ORDER BY occurred_at ASC LIMIT 1`)
     .get(askId);
-  const video = db.prepare(`SELECT id, published_at as publishedAt FROM videos v JOIN batches b ON b.video_id = v.id WHERE b.id = (SELECT batch_id FROM batch_replies WHERE ask_id = ? LIMIT 1)`).get(askId);
+  const video = db.prepare(`SELECT v.id as id, v.published_at as publishedAt FROM videos v JOIN batches b ON b.video_id = v.id WHERE b.id = (SELECT batch_id FROM batch_replies WHERE ask_id = ? LIMIT 1)`).get(askId);
 
   const askOk = firstEvent.occurredAt < video.publishedAt;
   const videoOk = video.publishedAt < ask.replied_at;
